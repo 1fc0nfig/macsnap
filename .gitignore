@@ -1,0 +1,37 @@
+# Build artifacts
+.build/
+DerivedData/
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Swift Package Manager
+Package.resolved
+.swiftpm/
+
+# Development
+.cursor/
+.claude/
+
+# Temporary files
+*.log
+*.tmp
+
+# Distribution (build separately)
+dist/
+
+# Development docs
+PROMPT.md
