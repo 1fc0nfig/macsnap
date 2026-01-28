@@ -1,6 +1,12 @@
-# MacSnap
+<p align="center">
+  <img src="Sources/MacSnap/Resources/AppIcon.png" alt="MacSnap" width="128" height="128">
+</p>
 
-A lightweight, native macOS screenshot utility that saves to both clipboard and filesystem simultaneously.
+<h1 align="center">MacSnap</h1>
+
+<p align="center">
+  A lightweight, native macOS screenshot utility that saves to both clipboard and filesystem simultaneously.
+</p>
 
 ## Features
 
