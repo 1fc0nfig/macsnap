@@ -29,11 +29,24 @@
 
 ## Installation
 
+### Homebrew
+
+```bash
+# Add the tap
+brew tap 1fc0nfig/macsnap https://github.com/1fc0nfig/macsnap
+
+# Install the menu bar app
+brew install --cask macsnap
+
+# Or install CLI only
+brew install macsnap-cli
+```
+
 ### Building from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/macsnap.git
+git clone https://github.com/1fc0nfig/macsnap.git
 cd macsnap
 
 # Build release version
