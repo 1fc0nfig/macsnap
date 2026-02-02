@@ -70,22 +70,8 @@ if [ -f "Sources/MacSnap/Resources/AppIcon.icns" ]; then
     echo "  Added AppIcon.icns"
 fi
 
-# Create entitlements file for code signing
-# These entitlements are required for hardened runtime compatibility
-cat > "dist/MacSnap.entitlements" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>com.apple.security.app-sandbox</key>
-    <false/>
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
-</dict>
-</plist>
-EOF
+# Copy entitlements file for code signing
+cp "Resources/macsnap.entitlements" "dist/MacSnap.entitlements"
 
 # Code sign the app with hardened runtime (required for macOS Sonoma+ permissions)
 # The --options runtime flag enables hardened runtime which is necessary for the app

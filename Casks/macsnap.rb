@@ -1,6 +1,6 @@
 cask "macsnap" do
-  version "1.0.0"
-  sha256 "d9fd0f7cb637cabc89aa136b8c9b348f566c9d061b1eb3650d5adeb76363c6d5"
+  version "1.1.0"
+  sha256 "625f063b1a1834808490530bd6d6c13a403b5bfbb10ca615080a534b00692d93"
 
   url "https://github.com/1fc0nfig/macsnap/releases/download/v#{version}/MacSnap-v#{version}.zip"
   name "MacSnap"
