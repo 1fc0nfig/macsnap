@@ -16,6 +16,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingScreenCaptureRequest = false
     private var didRequestScreenCapturePermissionThisLaunch = false
 
+    // Permission monitoring
+    private var permissionCheckTimer: Timer?
+    private var accessibilityPermissionGranted = false
+
     // File editing state
     private var directoryMonitor: DispatchSourceFileSystemObject?
     private var editingFileURL: URL?
@@ -77,6 +81,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = nil
         stopWatchingDirectory()
         HotkeyManager.shared.unregisterAll()
     }
@@ -92,15 +98,46 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Permissions
 
     private func checkPermissions() {
+        // Check initial accessibility state
+        accessibilityPermissionGranted = HotkeyManager.shared.hasAccessibilityPermission()
+
         // Request accessibility permission (only once)
-        if !HotkeyManager.shared.hasAccessibilityPermission() {
+        if !accessibilityPermissionGranted {
             HotkeyManager.shared.requestAccessibilityPermission()
+            // Start monitoring for permission grant
+            startPermissionMonitoring()
         }
 
         // Trigger screen recording permission using ScreenCaptureKit
         pendingScreenCaptureRequest = !CaptureEngine.shared.hasScreenCapturePermission()
 
         requestNotificationPermission()
+    }
+
+    private func startPermissionMonitoring() {
+        // Poll every 2 seconds to check if accessibility permission was granted
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+
+            let hasPermission = HotkeyManager.shared.hasAccessibilityPermission()
+
+            if hasPermission && !self.accessibilityPermissionGranted {
+                // Permission was just granted!
+                Logger.info("Accessibility permission granted - setting up hotkeys")
+                self.accessibilityPermissionGranted = true
+
+                // Re-register hotkeys now that we have permission
+                HotkeyManager.shared.registerHotkeys()
+
+                // Stop monitoring
+                timer.invalidate()
+                self.permissionCheckTimer = nil
+            }
+        }
     }
 
     // MARK: - Hotkeys
