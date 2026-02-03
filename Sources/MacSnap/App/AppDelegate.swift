@@ -34,9 +34,6 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController.appDelegate = self
         menuBarController.setup()
 
-        // Register hotkeys
-        setupHotkeys()
-
         // Ensure output directory exists
         do {
             try ConfigManager.shared.ensureOutputDirectoryExists()
@@ -44,8 +41,12 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             Logger.warning("Could not create output directory: \(error.localizedDescription)")
         }
 
-        // Check permissions
+        // Check permissions FIRST (shows welcome dialog on first launch)
+        // This must happen before setupHotkeys() to avoid duplicate permission prompts
         checkPermissions()
+
+        // Register hotkeys AFTER permissions are handled
+        setupHotkeys()
 
         // Listen for config changes
         NotificationCenter.default.addObserver(

@@ -111,7 +111,7 @@ public final class HotkeyManager {
 
         guard hasAccessibilityPermission() else {
             Logger.debug("Accessibility permission NOT granted - hotkeys will not work")
-            requestAccessibilityPermission()
+            // Don't auto-request here - let the app's onboarding flow handle it
             return
         }
 
