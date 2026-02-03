@@ -74,9 +74,9 @@ fi
 # Copy entitlements file for code signing
 cp "Resources/macsnap.entitlements" "dist/MacSnap.entitlements"
 
-# Use ad-hoc signing by default (works without Apple Developer account)
-# Set SIGN_IDENTITY environment variable to use a different identity
-SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+# Always use ad-hoc signing (works without Apple Developer account)
+# This avoids certificate chain issues with Apple Development certificates
+SIGN_IDENTITY="-"
 echo "  Using signing identity: ${SIGN_IDENTITY}"
 
 # Code sign the app with hardened runtime
