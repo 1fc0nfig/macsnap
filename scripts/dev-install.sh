@@ -9,15 +9,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 APP_NAME="MacSnap.app"
 APP_PATH="/Applications/$APP_NAME"
+SIGN_IDENTITY="${MACSNAP_SIGN_IDENTITY:-${SIGN_IDENTITY:-}}"
 
 cd "$PROJECT_DIR"
 
 echo "=== MacSnap Dev Install ==="
 echo ""
 
-# Step 1: Build the app
-echo "[1/4] Building app..."
-./scripts/build-app.sh
+# Step 1: Build the app (prefer Apple Development identity)
+if [ -z "$SIGN_IDENTITY" ]; then
+    SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk -F\" '/Apple Development/ {print $2; exit}')
+fi
+
+if [ -n "$SIGN_IDENTITY" ]; then
+    echo "[1/4] Building app (signed as: $SIGN_IDENTITY)..."
+    MACSNAP_SIGN_IDENTITY="$SIGN_IDENTITY" ./scripts/build-app.sh
+else
+    echo "[1/4] Building app (ad-hoc signing)..."
+    echo "  Warning: No Apple Development identity found. Screen Recording prompt will NOT appear."
+    ./scripts/build-app.sh
+fi
 
 # Step 2: Kill any running instance
 echo ""

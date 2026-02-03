@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MacSnap - Getting Started</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1d1d1f;
+            background: linear-gradient(180deg, #f5f5f7 0%, #ffffff 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+            border-radius: 18px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #86868b;
+            font-size: 17px;
+        }
+        .step {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: #007aff;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .step-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .step-content {
+            color: #515154;
+            font-size: 15px;
+        }
+        .step-content p {
+            margin-bottom: 12px;
+        }
+        .step-content ul {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+        .step-content li {
+            margin-bottom: 6px;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .warning-box strong {
+            color: #856404;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #007aff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .info-box strong {
+            color: #0056b3;
+        }
+        .path {
+            background: #f5f5f7;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 13px;
+            color: #1d1d1f;
+        }
+        .button-mock {
+            display: inline-block;
+            background: #f5f5f7;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .screenshot-placeholder {
+            background: linear-gradient(135deg, #2c2c2e 0%, #1c1c1e 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+            color: white;
+        }
+        .screenshot-placeholder .dialog {
+            background: #3a3a3c;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+        .screenshot-placeholder .dialog-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .screenshot-placeholder .dialog-text {
+            font-size: 13px;
+            color: #ebebf5;
+            opacity: 0.8;
+            margin-bottom: 12px;
+        }
+        .screenshot-placeholder .dialog-button {
+            background: #0a84ff;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .hotkeys {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .hotkey {
+            background: #f5f5f7;
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        .hotkey-keys {
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+        .hotkey-desc {
+            font-size: 12px;
+            color: #86868b;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #86868b;
+            font-size: 13px;
+        }
+        footer a {
+            color: #007aff;
+            text-decoration: none;
+        }
+        .arrow {
+            text-align: center;
+            font-size: 24px;
+            color: #86868b;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">📸</div>
+            <h1>MacSnap</h1>
+            <p class="subtitle">Getting Started Guide</p>
+        </header>
+
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">1</div>
+                <div class="step-title">Install MacSnap</div>
+            </div>
+            <div class="step-content">
+                <p>Drag <strong>MacSnap.app</strong> to your <strong>Applications</strong> folder.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">2</div>
+                <div class="step-title">Bypass Gatekeeper Warning</div>
+            </div>
+            <div class="step-content">
+                <p>When you first open MacSnap, macOS may show a security warning because the app is not notarized by Apple.</p>
+
+                <div class="screenshot-placeholder">
+                    <div class="dialog">
+                        <div class="dialog-title">"MacSnap.app" was blocked to protect your Mac.</div>
+                        <div class="dialog-text">Apple could not verify "MacSnap.app" is free of malware that may harm your Mac or compromise your privacy.</div>
+                        <button class="dialog-button">Open Anyway</button>
+                    </div>
+                </div>
+
+                <p><strong>To open MacSnap:</strong></p>
+                <ol>
+                    <li>Open <span class="path">System Settings</span></li>
+                    <li>Go to <span class="path">Privacy & Security</span></li>
+                    <li>Scroll down to the Security section</li>
+                    <li>Click <span class="button-mock">Open Anyway</span> next to the MacSnap message</li>
+                    <li>Click <span class="button-mock">Open</span> in the confirmation dialog</li>
+                </ol>
+
+                <div class="info-box">
+                    <strong>Why does this happen?</strong><br>
+                    MacSnap is open source and distributed outside the Mac App Store. Apple requires a paid Developer ID to notarize apps, which is why you see this warning.
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">3</div>
+                <div class="step-title">Grant Screen Recording Permission</div>
+            </div>
+            <div class="step-content">
+                <p>MacSnap needs Screen Recording permission to capture screenshots.</p>
+
+                <p><strong>When prompted, or manually:</strong></p>
+                <ol>
+                    <li>Open <span class="path">System Settings</span></li>
+                    <li>Go to <span class="path">Privacy & Security</span> → <span class="path">Screen Recording</span></li>
+                    <li>Click the <strong>+</strong> button or toggle on <strong>MacSnap</strong></li>
+                    <li>You may need to quit and reopen MacSnap</li>
+                </ol>
+
+                <div class="warning-box">
+                    <strong>Important:</strong> Without this permission, MacSnap cannot capture any screenshots.
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">4</div>
+                <div class="step-title">Grant Accessibility Permission</div>
+            </div>
+            <div class="step-content">
+                <p>MacSnap needs Accessibility permission to register global keyboard shortcuts.</p>
+
+                <p><strong>When prompted, or manually:</strong></p>
+                <ol>
+                    <li>Open <span class="path">System Settings</span></li>
+                    <li>Go to <span class="path">Privacy & Security</span> → <span class="path">Accessibility</span></li>
+                    <li>Click the <strong>+</strong> button or toggle on <strong>MacSnap</strong></li>
+                </ol>
+
+                <div class="info-box">
+                    <strong>Note:</strong> Without this permission, keyboard shortcuts won't work, but you can still capture screenshots from the menu bar.
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">5</div>
+                <div class="step-title">Start Capturing!</div>
+            </div>
+            <div class="step-content">
+                <p>MacSnap runs in your menu bar. Click the camera icon to access capture options, or use keyboard shortcuts:</p>
+
+                <div class="hotkeys">
+                    <div class="hotkey">
+                        <div class="hotkey-keys">⌘⇧1</div>
+                        <div class="hotkey-desc">Full Screen</div>
+                    </div>
+                    <div class="hotkey">
+                        <div class="hotkey-keys">⌘⇧2</div>
+                        <div class="hotkey-desc">Area Selection</div>
+                    </div>
+                    <div class="hotkey">
+                        <div class="hotkey-keys">⌘⇧3</div>
+                        <div class="hotkey-desc">Window Capture</div>
+                    </div>
+                    <div class="hotkey">
+                        <div class="hotkey-keys">⌘⇧4</div>
+                        <div class="hotkey-desc">Custom Region</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Need help? Visit <a href="https://github.com/1fc0nfig/macsnap">github.com/1fc0nfig/macsnap</a></p>
+        </footer>
+    </div>
+</body>
+</html>

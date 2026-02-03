@@ -13,6 +13,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Capture state - prevents multiple simultaneous captures
     private var isCaptureInProgress = false
+    private var pendingScreenCaptureRequest = false
+    private var didRequestScreenCapturePermissionThisLaunch = false
 
     // File editing state
     private var directoryMonitor: DispatchSourceFileSystemObject?
@@ -59,6 +61,21 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         Logger.info("Application ready")
     }
 
+    public func applicationDidBecomeActive(_ notification: Notification) {
+        guard pendingScreenCaptureRequest,
+              !didRequestScreenCapturePermissionThisLaunch,
+              !CaptureEngine.shared.hasScreenCapturePermission()
+        else {
+            return
+        }
+
+        didRequestScreenCapturePermissionThisLaunch = true
+        pendingScreenCaptureRequest = false
+
+        Logger.info("Requesting screen capture permission (app active)")
+        CaptureEngine.shared.requestScreenCapturePermission()
+    }
+
     public func applicationWillTerminate(_ notification: Notification) {
         stopWatchingDirectory()
         HotkeyManager.shared.unregisterAll()
@@ -72,67 +89,18 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    // Track if we've shown the permission alert this session
     // MARK: - Permissions
 
     private func checkPermissions() {
-        let hasScreenRecording = CaptureEngine.shared.hasScreenCapturePermission()
-        let hasAccessibility = HotkeyManager.shared.hasAccessibilityPermission()
-
-        Logger.info("Permission check - Screen Recording: \(hasScreenRecording), Accessibility: \(hasAccessibility)")
-
-        // If both permissions are granted, we're done
-        if hasScreenRecording && hasAccessibility {
-            Logger.info("All permissions granted")
-            requestNotificationPermission()
-            return
-        }
-
-        // Activate app to ensure permission dialogs appear in foreground
-        NSApp.activate(ignoringOtherApps: true)
-
-        // Request accessibility permission (shows system dialog immediately)
-        if !hasAccessibility {
-            Logger.info("Requesting accessibility permission")
+        // Request accessibility permission (only once)
+        if !HotkeyManager.shared.hasAccessibilityPermission() {
             HotkeyManager.shared.requestAccessibilityPermission()
         }
 
-        // Trigger screen recording permission with a fake capture
-        // This is more reliable than ScreenCaptureKit API on macOS 14+
-        if !hasScreenRecording {
-            Logger.info("Triggering screen recording permission via capture attempt")
-            // Short delay to let accessibility dialog appear first
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                NSApp.activate(ignoringOtherApps: true)
-                self.triggerScreenRecordingPermission()
-            }
-        }
+        // Trigger screen recording permission using ScreenCaptureKit
+        pendingScreenCaptureRequest = !CaptureEngine.shared.hasScreenCapturePermission()
 
-        // Request notification permission
         requestNotificationPermission()
-    }
-
-    /// Triggers the screen recording permission dialog by attempting a real capture
-    private func triggerScreenRecordingPermission() {
-        // First try ScreenCaptureKit (required on macOS 14+ to register in TCC)
-        CaptureEngine.shared.requestScreenCapturePermission()
-
-        // Also attempt a real capture - this reliably triggers the dialog
-        // even if ScreenCaptureKit doesn't show it
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            // Try to capture a 1x1 pixel - this will trigger the permission dialog
-            _ = CGWindowListCreateImage(
-                CGRect(x: 0, y: 0, width: 1, height: 1),
-                .optionOnScreenOnly,
-                kCGNullWindowID,
-                [.bestResolution]
-            )
-
-            // Also try CGDisplayCreateImage as a fallback
-            _ = CGDisplayCreateImage(CGMainDisplayID())
-
-            Logger.info("Screen recording permission trigger attempts completed")
-        }
     }
 
     // MARK: - Hotkeys

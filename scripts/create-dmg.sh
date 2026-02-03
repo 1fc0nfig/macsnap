@@ -6,8 +6,10 @@ VERSION="${1:-1.0.0}"
 DMG_NAME="${APP_NAME}-${VERSION}"
 APP_DIR="dist/${APP_NAME}.app"
 DMG_FILE="dist/${DMG_NAME}.dmg"
+DMG_STAGING="dist/dmg-staging"
 BACKGROUND="Resources/dmg-background.png"
 VOLUME_ICON="Sources/MacSnap/Resources/AppIcon.icns"
+GETTING_STARTED="Resources/Getting Started.html"
 
 # Check if app exists
 if [ ! -d "${APP_DIR}" ]; then
@@ -24,8 +26,20 @@ if [ ! -f "${BACKGROUND}" ]; then
     swift scripts/generate-dmg-background.swift
 fi
 
-# Remove existing DMG
+# Remove existing DMG and staging
 rm -f "${DMG_FILE}"
+rm -rf "${DMG_STAGING}"
+
+# Create staging directory with all DMG contents
+echo "Preparing DMG contents..."
+mkdir -p "${DMG_STAGING}"
+cp -R "${APP_DIR}" "${DMG_STAGING}/"
+
+# Copy Getting Started guide if it exists
+if [ -f "${GETTING_STARTED}" ]; then
+    cp "${GETTING_STARTED}" "${DMG_STAGING}/"
+    echo "  Added Getting Started guide"
+fi
 
 # Check if create-dmg is available
 if command -v create-dmg &> /dev/null; then
@@ -42,45 +56,31 @@ if command -v create-dmg &> /dev/null; then
         --icon "${APP_NAME}.app" 140 180 \
         --hide-extension "${APP_NAME}.app" \
         --app-drop-link 500 180 \
+        --icon "Getting Started.html" 320 280 \
         --no-internet-enable \
         "${DMG_FILE}" \
-        "${APP_DIR}"
+        "${DMG_STAGING}"
+
+    # Clean up staging
+    rm -rf "${DMG_STAGING}"
 else
     echo "create-dmg not found, using basic hdiutil method..."
     echo "Install create-dmg for a professional DMG: brew install create-dmg"
 
-    # Fallback to basic DMG creation
-    DMG_DIR="dist/dmg"
-    rm -rf "${DMG_DIR}"
-    mkdir -p "${DMG_DIR}"
+    # Add Applications symlink and Getting Started to staging
+    ln -s /Applications "${DMG_STAGING}/Applications"
 
-    cp -R "${APP_DIR}" "${DMG_DIR}/"
-    ln -s /Applications "${DMG_DIR}/Applications"
-
-    cat > "${DMG_DIR}/README.txt" << EOF
-MacSnap - Screenshot Utility for macOS
-
-Installation:
-1. Drag MacSnap.app to the Applications folder
-2. Launch MacSnap from Applications
-3. Grant Screen Recording permission when prompted
-4. Grant Accessibility permission for hotkeys when prompted
-
-Default Hotkeys:
-- Cmd+Shift+1: Full Screen
-- Cmd+Shift+2: Area Selection
-- Cmd+Shift+3: Window Capture
-- Cmd+Shift+4: Custom Region
-
-For more info, visit: https://github.com/1fc0nfig/macsnap
-EOF
+    # Copy Getting Started guide if not already there
+    if [ -f "${GETTING_STARTED}" ] && [ ! -f "${DMG_STAGING}/Getting Started.html" ]; then
+        cp "${GETTING_STARTED}" "${DMG_STAGING}/"
+    fi
 
     hdiutil create -volname "${APP_NAME}" \
-        -srcfolder "${DMG_DIR}" \
+        -srcfolder "${DMG_STAGING}" \
         -ov -format UDZO \
         "${DMG_FILE}"
 
-    rm -rf "${DMG_DIR}"
+    rm -rf "${DMG_STAGING}"
 fi
 
 echo ""

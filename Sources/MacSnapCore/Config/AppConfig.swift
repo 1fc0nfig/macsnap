@@ -11,7 +11,7 @@ public struct AppConfig: Codable, Equatable {
     public var areaRegion: AreaRegionConfig
 
     public init(
-        version: String = "1.1",
+        version: String = "1.2",
         output: OutputConfig = OutputConfig(),
         capture: CaptureConfig = CaptureConfig(),
         shortcuts: ShortcutsConfig = ShortcutsConfig(),

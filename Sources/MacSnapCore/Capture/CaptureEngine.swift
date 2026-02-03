@@ -41,37 +41,15 @@ public final class CaptureEngine {
     }
 
     /// Requests screen recording permission by triggering the system dialog
-    /// On macOS 12.3+ we use ScreenCaptureKit which properly triggers the permission dialog
     public func requestScreenCapturePermission() {
-        // On macOS 12.3+, ScreenCaptureKit is the ONLY reliable way to trigger
-        // the screen recording permission dialog and register the app in TCC.
-        // The older CoreGraphics APIs (CGRequestScreenCaptureAccess, CGWindowListCreateImage)
-        // no longer trigger the permission dialog on macOS 14 Sonoma and later.
-        if #available(macOS 12.3, *) {
-            // SCShareableContent.getExcludingDesktopWindows triggers the permission prompt
-            // This is the modern, Apple-recommended way to request screen recording permission
-            SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: false) { content, error in
-                if let error = error {
-                    // Error is expected if permission is denied - that's fine,
-                    // the important thing is that the dialog was shown and the app
-                    // is now registered in System Settings > Screen Recording
-                    Logger.debug("ScreenCaptureKit permission request completed: \(error.localizedDescription)")
-                } else {
-                    Logger.debug("ScreenCaptureKit permission granted, found \(content?.displays.count ?? 0) displays")
-                }
-            }
-        } else if #available(macOS 10.15, *) {
-            // Fallback for macOS 10.15 - 12.2
+        // Call CGRequestScreenCaptureAccess to register intent
+        if #available(macOS 10.15, *) {
             CGRequestScreenCaptureAccess()
-            _ = CGWindowListCreateImage(
-                CGRect(x: 0, y: 0, width: 1, height: 1),
-                .optionOnScreenOnly,
-                kCGNullWindowID,
-                []
-            )
-        } else {
-            // Fallback for older macOS
-            _ = CGDisplayCreateImage(CGMainDisplayID())
+        }
+
+        // On macOS 12.3+, also use ScreenCaptureKit
+        if #available(macOS 12.3, *) {
+            SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: false) { _, _ in }
         }
     }
 

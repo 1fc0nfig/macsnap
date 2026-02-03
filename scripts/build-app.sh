@@ -4,9 +4,10 @@ set -e
 # Configuration
 APP_NAME="MacSnap"
 BUNDLE_ID="com.macsnap.app"
-VERSION="1.0.0"
+VERSION="1.2.0"
 BUILD_DIR=".build/release"
 APP_DIR="dist/${APP_NAME}.app"
+SIGN_IDENTITY="${MACSNAP_SIGN_IDENTITY:-${SIGN_IDENTITY:-}}"
 
 echo "Building MacSnap.app..."
 
@@ -73,13 +74,26 @@ fi
 # Copy entitlements file for code signing
 cp "Resources/macsnap.entitlements" "dist/MacSnap.entitlements"
 
+# Determine signing identity (Apple Development preferred). Fall back to ad-hoc if none found.
+if [ -z "$SIGN_IDENTITY" ]; then
+    SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk -F\" '/Apple Development/ {print $2; exit}')
+fi
+
+if [ -z "$SIGN_IDENTITY" ]; then
+    SIGN_IDENTITY="-"
+    echo "  Warning: No Apple Development identity found. Using ad-hoc signing."
+    echo "  Screen Recording permission prompts will NOT appear with ad-hoc signing."
+else
+    echo "  Using signing identity: $SIGN_IDENTITY"
+fi
+
 # Code sign the app with hardened runtime (required for macOS Sonoma+ permissions)
 # The --options runtime flag enables hardened runtime which is necessary for the app
 # to appear in System Settings > Privacy & Security > Screen Recording
 echo "  Signing app bundle with hardened runtime..."
-codesign --force --deep --sign - --options runtime --entitlements "dist/MacSnap.entitlements" "${APP_DIR}" 2>/dev/null || {
+codesign --force --deep --sign "$SIGN_IDENTITY" --options runtime --entitlements "dist/MacSnap.entitlements" "${APP_DIR}" 2>/dev/null || {
     echo "  Warning: Code signing failed (this may affect permissions)"
-    echo "  Try running: codesign --force --deep --sign - --options runtime --entitlements dist/MacSnap.entitlements dist/MacSnap.app"
+    echo "  Try running: codesign --force --deep --sign \"$SIGN_IDENTITY\" --options runtime --entitlements dist/MacSnap.entitlements dist/MacSnap.app"
 }
 
 # Copy CLI tool alongside
