@@ -233,12 +233,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             self?.menuBarController.updateMenu()
 
             // Delay to ensure overlay is fully removed from screen buffer
-            // Inset by 2 pixels to avoid any border bleed from selection UI
-            let captureRect = rect.insetBy(dx: 2, dy: 2)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 defer { self?.captureCompleted() }
                 do {
-                    let result = try CaptureEngine.shared.captureArea(captureRect)
+                    let result = try CaptureEngine.shared.captureArea(rect)
                     self?.handleCaptureResult(result)
                 } catch {
                     self?.handleCaptureError(error)
@@ -262,15 +260,14 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
             // DO NOT save - custom region is always fresh
             // Capture immediately
-            let captureRect = rect.insetBy(dx: 2, dy: 2)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 defer { self?.captureCompleted() }
                 do {
-                    let result = try CaptureEngine.shared.captureArea(captureRect)
+                    let result = try CaptureEngine.shared.captureArea(rect)
                     let customResult = CaptureResult(
                         image: result.image,
                         mode: .custom,
-                        captureRect: captureRect,
+                        captureRect: rect,
                         sourceApp: nil
                     )
                     self?.handleCaptureResult(customResult)

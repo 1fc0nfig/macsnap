@@ -381,10 +381,12 @@ class SelectionState {
             return nil
         }
 
-        let x = min(start.x, current.x)
-        let y = min(start.y, current.y)
-        let width = abs(current.x - start.x)
-        let height = abs(current.y - start.y)
+        // Round to integers to ensure pixel-aligned capture
+        // This ensures the captured size matches what the user sees in the dimension panel
+        let x = round(min(start.x, current.x))
+        let y = round(min(start.y, current.y))
+        let width = round(abs(current.x - start.x))
+        let height = round(abs(current.y - start.y))
 
         guard width > 0 && height > 0 else { return nil }
 
