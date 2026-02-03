@@ -73,18 +73,13 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // Track if we've shown the permission alert this session
-    private var hasShownPermissionAlert = false
-
     // MARK: - Permissions
-
-    private static let hasCompletedOnboardingKey = "hasCompletedOnboarding"
 
     private func checkPermissions() {
         let hasScreenRecording = CaptureEngine.shared.hasScreenCapturePermission()
         let hasAccessibility = HotkeyManager.shared.hasAccessibilityPermission()
-        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: Self.hasCompletedOnboardingKey)
 
-        Logger.info("Permission check - Screen Recording: \(hasScreenRecording), Accessibility: \(hasAccessibility), Onboarding completed: \(hasCompletedOnboarding)")
+        Logger.info("Permission check - Screen Recording: \(hasScreenRecording), Accessibility: \(hasAccessibility)")
 
         // If both permissions are granted, we're done
         if hasScreenRecording && hasAccessibility {
@@ -93,117 +88,50 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // First launch or permissions missing - show welcome dialog and request permissions
-        if !hasCompletedOnboarding {
-            showWelcomeAndRequestPermissions(hasScreenRecording: hasScreenRecording, hasAccessibility: hasAccessibility)
-        } else {
-            // Already onboarded but permissions missing - request them directly
-            requestMissingPermissions(hasScreenRecording: hasScreenRecording, hasAccessibility: hasAccessibility)
+        // Activate app to ensure permission dialogs appear in foreground
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Request accessibility permission (shows system dialog immediately)
+        if !hasAccessibility {
+            Logger.info("Requesting accessibility permission")
+            HotkeyManager.shared.requestAccessibilityPermission()
+        }
+
+        // Trigger screen recording permission with a fake capture
+        // This is more reliable than ScreenCaptureKit API on macOS 14+
+        if !hasScreenRecording {
+            Logger.info("Triggering screen recording permission via capture attempt")
+            // Short delay to let accessibility dialog appear first
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                NSApp.activate(ignoringOtherApps: true)
+                self.triggerScreenRecordingPermission()
+            }
         }
 
         // Request notification permission
         requestNotificationPermission()
     }
 
-    private func showWelcomeAndRequestPermissions(hasScreenRecording: Bool, hasAccessibility: Bool) {
-        // Activate the app to ensure dialogs appear
-        NSApp.activate(ignoringOtherApps: true)
+    /// Triggers the screen recording permission dialog by attempting a real capture
+    private func triggerScreenRecordingPermission() {
+        // First try ScreenCaptureKit (required on macOS 14+ to register in TCC)
+        CaptureEngine.shared.requestScreenCapturePermission()
 
-        let alert = NSAlert()
-        alert.messageText = "Welcome to MacSnap!"
-        alert.informativeText = """
-            MacSnap needs two permissions to work:
+        // Also attempt a real capture - this reliably triggers the dialog
+        // even if ScreenCaptureKit doesn't show it
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Try to capture a 1x1 pixel - this will trigger the permission dialog
+            _ = CGWindowListCreateImage(
+                CGRect(x: 0, y: 0, width: 1, height: 1),
+                .optionOnScreenOnly,
+                kCGNullWindowID,
+                [.bestResolution]
+            )
 
-            • Screen Recording – to capture screenshots
-            • Accessibility – for global keyboard shortcuts
+            // Also try CGDisplayCreateImage as a fallback
+            _ = CGDisplayCreateImage(CGMainDisplayID())
 
-            Click "Continue" to grant these permissions. You'll see system dialogs asking for each permission.
-            """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Continue")
-        alert.addButton(withTitle: "Skip")
-
-        let response = alert.runModal()
-
-        // Mark onboarding as completed regardless of choice
-        UserDefaults.standard.set(true, forKey: Self.hasCompletedOnboardingKey)
-
-        if response == .alertFirstButtonReturn {
-            requestMissingPermissions(hasScreenRecording: hasScreenRecording, hasAccessibility: hasAccessibility)
-        }
-    }
-
-    private func requestMissingPermissions(hasScreenRecording: Bool, hasAccessibility: Bool) {
-        // Activate app to ensure permission dialogs appear in foreground
-        NSApp.activate(ignoringOtherApps: true)
-
-        // Request accessibility first (synchronous dialog)
-        if !hasAccessibility {
-            Logger.info("Requesting accessibility permission")
-            HotkeyManager.shared.requestAccessibilityPermission()
-        }
-
-        // Request screen recording permission
-        // Use a short delay to let accessibility dialog appear first
-        if !hasScreenRecording {
-            Logger.info("Scheduling screen recording permission request")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                Logger.info("Requesting screen recording permission")
-                // Ensure app is still in foreground
-                NSApp.activate(ignoringOtherApps: true)
-                CaptureEngine.shared.requestScreenCapturePermission()
-
-                // Verify permissions after a delay and show help if still missing
-                self?.verifyPermissionsAfterDelay()
-            }
-        } else if !hasAccessibility {
-            // Only accessibility was missing, still verify after delay
-            verifyPermissionsAfterDelay()
-        }
-    }
-
-    private func verifyPermissionsAfterDelay() {
-        // Check again after 3 seconds to see if user granted permissions
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            let hasScreenRecording = CaptureEngine.shared.hasScreenCapturePermission()
-            let hasAccessibility = HotkeyManager.shared.hasAccessibilityPermission()
-
-            Logger.info("Permission verification - Screen Recording: \(hasScreenRecording), Accessibility: \(hasAccessibility)")
-
-            // If screen recording is still missing, show instructions
-            // (accessibility dialog is more reliable, so focus on screen recording)
-            if !hasScreenRecording {
-                self?.showScreenRecordingInstructions()
-            }
-        }
-    }
-
-    private func showScreenRecordingInstructions() {
-        // Don't show if we've already shown this session
-        guard !hasShownPermissionAlert else { return }
-        hasShownPermissionAlert = true
-
-        NSApp.activate(ignoringOtherApps: true)
-
-        let alert = NSAlert()
-        alert.messageText = "Screen Recording Permission Required"
-        alert.informativeText = """
-            MacSnap needs Screen Recording permission to capture screenshots.
-
-            Please enable it in System Settings:
-            1. Click "Open System Settings" below
-            2. Find "MacSnap" in the list
-            3. Toggle it ON
-            4. You may need to restart MacSnap
-            """
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Later")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-                NSWorkspace.shared.open(url)
-            }
+            Logger.info("Screen recording permission trigger attempts completed")
         }
     }
 
