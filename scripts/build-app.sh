@@ -1,18 +1,28 @@
 #!/bin/bash
 set -e
 
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT_DIR"
+
 # Configuration
 APP_NAME="MacSnap"
 BUNDLE_ID="com.macsnap.app"
-VERSION="1.2.0"
+VERSION="1.3.0"
 BUILD_DIR=".build/release"
 APP_DIR="dist/${APP_NAME}.app"
 SIGN_IDENTITY="${MACSNAP_SIGN_IDENTITY:-${SIGN_IDENTITY:-}}"
+MODULE_CACHE="${ROOT_DIR}/.build/module-cache"
+CLANG_CACHE="${ROOT_DIR}/.build/clang-module-cache"
+
+mkdir -p "$MODULE_CACHE" "$CLANG_CACHE"
 
 echo "Building MacSnap.app..."
 
 # Build release binary
-swift build -c release
+HOME="$ROOT_DIR" \
+SWIFTPM_MODULECACHE_OVERRIDE="$MODULE_CACHE" \
+CLANG_MODULE_CACHE_PATH="$CLANG_CACHE" \
+swift build --disable-sandbox -c release
 
 # Create app bundle structure
 rm -rf "dist"
@@ -21,6 +31,8 @@ mkdir -p "${APP_DIR}/Contents/Resources"
 
 # Copy executable
 cp "${BUILD_DIR}/MacSnap" "${APP_DIR}/Contents/MacOS/"
+cp "${BUILD_DIR}/macsnap-cli" "${APP_DIR}/Contents/MacOS/"
+chmod +x "${APP_DIR}/Contents/MacOS/MacSnap" "${APP_DIR}/Contents/MacOS/macsnap-cli"
 
 # Create Info.plist
 cat > "${APP_DIR}/Contents/Info.plist" << EOF
@@ -45,7 +57,7 @@ cat > "${APP_DIR}/Contents/Info.plist" << EOF
     <key>CFBundleShortVersionString</key>
     <string>${VERSION}</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>${VERSION}</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
@@ -90,7 +102,7 @@ else
     echo "  Warning: Signature verification failed"
 fi
 
-# Copy CLI tool alongside
+# Copy CLI tool alongside for standalone distribution as well
 cp "${BUILD_DIR}/macsnap-cli" "dist/"
 
 echo ""
@@ -101,7 +113,8 @@ echo "CLI tool:   dist/macsnap-cli"
 echo ""
 echo "To install:"
 echo "  1. Copy ${APP_NAME}.app to /Applications"
-echo "  2. Copy macsnap-cli to /usr/local/bin (optional)"
+echo "  2. (Optional) Link CLI:"
+echo "     ln -sf /Applications/${APP_NAME}.app/Contents/MacOS/macsnap-cli /usr/local/bin/macsnap-cli"
 echo ""
 echo "IMPORTANT: After installing, grant permissions in System Settings:"
 echo "  - Privacy & Security > Screen Recording > Add MacSnap"

@@ -374,7 +374,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
         capturePreviewWindow = CapturePreviewWindow(
             result: result,
-            duration: config.capture.previewDuration
+            duration: config.capture.previewDuration,
+            savedFileURL: savedURL
         )
 
         capturePreviewWindow?.onDismiss = { [weak self] action in

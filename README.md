@@ -16,7 +16,7 @@
 - **Configurable Hotkeys**: Default shortcuts (Cmd+Shift+1-4) can be customized
 - **Smart Organization**: Auto-organize screenshots by date or application
 - **Flexible Formats**: PNG, JPG (with quality control), or WebP
-- **Preview Window**: Optional floating preview with quick actions (save, edit, delete)
+- **Preview Window**: Optional floating preview with quick actions and drag-and-drop to other apps
 - **Menu Bar App**: Lightweight, always accessible from the menu bar
 - **CLI Tool**: Full command-line interface for automation and scripting
 - **Flexible Visibility**: Show in menu bar, dock, or both
@@ -33,13 +33,21 @@
 
 ```bash
 # Add the tap
-brew tap 1fc0nfig/macsnap https://github.com/1fc0nfig/macsnap
+brew tap 1fc0nfig/macsnap
 
-# Install the menu bar app
+# Install the menu bar app + macsnap-cli
 brew install --cask macsnap
 
 # Or install CLI only
 brew install macsnap-cli
+```
+
+### Manual App Install (DMG)
+
+If you install by dragging `MacSnap.app` into `/Applications`, link the bundled CLI manually:
+
+```bash
+ln -sf /Applications/MacSnap.app/Contents/MacOS/macsnap-cli /usr/local/bin/macsnap-cli
 ```
 
 ### Building from Source
@@ -97,6 +105,15 @@ Click the MacSnap icon in your menu bar to:
 - Drag inside selection to move it
 
 All shortcuts can be customized in Preferences.
+
+### Preview Thumbnail
+
+After each capture (when preview is enabled), the floating thumbnail supports:
+
+- **Click**: Open in Preview for editing
+- **Drag & Drop**: Drag the thumbnail into another app (Messages, Notes, Slack, etc.)
+- **Two-finger Swipe**: Dismiss the thumbnail
+- **Auto-save Timeout**: If untouched, it closes after the configured preview duration
 
 ### CLI
 
@@ -204,8 +221,11 @@ swift build
 # Build release version
 swift build -c release
 
-# Run tests
-swift test
+# Run the full automated test strategy (unit + CLI smoke)
+scripts/test-all.sh
+
+# Or run just unit tests
+scripts/test-all.sh --unit
 
 # Run the app
 swift run MacSnap
@@ -213,6 +233,8 @@ swift run MacSnap
 # Run the CLI
 swift run macsnap-cli capture full
 ```
+
+See `TESTING.md` for the full testing strategy and manual release checklist.
 
 ## Troubleshooting
 

@@ -2,7 +2,7 @@
 set -e
 
 APP_NAME="MacSnap"
-VERSION="${1:-1.0.0}"
+VERSION="${1:-1.3.0}"
 DMG_NAME="${APP_NAME}-${VERSION}"
 APP_DIR="dist/${APP_NAME}.app"
 DMG_FILE="dist/${DMG_NAME}.dmg"
@@ -53,10 +53,10 @@ if command -v create-dmg &> /dev/null; then
         --window-pos 200 120 \
         --window-size 660 400 \
         --icon-size 100 \
-        --icon "${APP_NAME}.app" 140 180 \
+        --icon "${APP_NAME}.app" 140 240 \
         --hide-extension "${APP_NAME}.app" \
-        --app-drop-link 500 180 \
-        --icon "Getting Started.html" 320 280 \
+        --app-drop-link 500 240 \
+        --icon "Getting Started.html" 320 100 \
         --no-internet-enable \
         "${DMG_FILE}" \
         "${DMG_STAGING}"

@@ -3,11 +3,11 @@ import MacSnapCore
 
 /// Floating preview thumbnail that appears after capture
 /// - Click: Opens larger preview for editing
-/// - Drag: Dismisses the thumbnail
+/// - Drag: Starts a drag-and-drop transfer to another app
 /// - Two-finger swipe: Dismisses the thumbnail
-public class CapturePreviewWindow: NSWindow {
+public class CapturePreviewWindow: NSWindow, NSDraggingSource {
     private let imageView: NSImageView
-    private let captureResult: CaptureResult
+    private let savedFileURL: URL?
     private var dismissTimer: Timer?
     private let duration: Double
     private var isDismissing = false
@@ -17,9 +17,8 @@ public class CapturePreviewWindow: NSWindow {
 
     // Drag tracking
     private var dragStartLocation: NSPoint?
-    private var initialWindowFrame: NSRect?
-    private var isDragging = false
-    private let dismissThreshold: CGFloat = 80
+    private var didStartDragSession = false
+    private let dragStartThreshold: CGFloat = 6
 
     // Global event monitors for drag without focus
     private var localMouseMonitor: Any?
@@ -33,9 +32,9 @@ public class CapturePreviewWindow: NSWindow {
         case delete
     }
 
-    public init(result: CaptureResult, duration: Double = 5.0) {
-        self.captureResult = result
+    public init(result: CaptureResult, duration: Double = 5.0, savedFileURL: URL? = nil) {
         self.duration = duration
+        self.savedFileURL = savedFileURL
 
         let nsImage = NSImage(cgImage: result.image, size: NSSize(
             width: result.image.width,
@@ -154,13 +153,13 @@ public class CapturePreviewWindow: NSWindow {
         let mouseLocation = NSEvent.mouseLocation
 
         // Check if mouse is over this window
-        guard frame.contains(mouseLocation) || isDragging else { return }
+        guard frame.contains(mouseLocation) || dragStartLocation != nil else { return }
 
         switch event.type {
         case .leftMouseDown:
             handleMouseDown(at: mouseLocation)
         case .leftMouseDragged:
-            handleMouseDragged(to: mouseLocation)
+            handleMouseDragged(event, to: mouseLocation)
         case .leftMouseUp:
             handleMouseUp(at: mouseLocation)
         case .scrollWheel:
@@ -173,35 +172,22 @@ public class CapturePreviewWindow: NSWindow {
     private func handleMouseDown(at location: NSPoint) {
         guard !isDismissing else { return }
         dragStartLocation = location
-        initialWindowFrame = self.frame
-        isDragging = false
+        didStartDragSession = false
         dismissTimer?.invalidate()
     }
 
-    private func handleMouseDragged(to location: NSPoint) {
-        guard let startLocation = dragStartLocation,
-              let initialFrame = initialWindowFrame else { return }
+    private func handleMouseDragged(_ event: NSEvent, to location: NSPoint) {
+        guard let startLocation = dragStartLocation, !didStartDragSession else { return }
 
         let deltaX = location.x - startLocation.x
         let deltaY = location.y - startLocation.y
         let distance = sqrt(deltaX * deltaX + deltaY * deltaY)
 
-        // Start dragging after small threshold
-        if !isDragging && distance > 3 {
-            isDragging = true
+        guard distance >= dragStartThreshold else { return }
+        didStartDragSession = startDragSession(with: event)
+        if didStartDragSession {
+            dragStartLocation = nil
         }
-
-        guard isDragging else { return }
-
-        // Move window
-        var newFrame = initialFrame
-        newFrame.origin.x += deltaX
-        newFrame.origin.y += deltaY
-        self.setFrame(newFrame, display: true)
-
-        // Fade based on distance
-        let fadeProgress = min(1, distance / dismissThreshold)
-        self.alphaValue = 1.0 - (fadeProgress * 0.6)
     }
 
     private func handleMouseUp(at location: NSPoint) {
@@ -209,34 +195,25 @@ public class CapturePreviewWindow: NSWindow {
             dragStartLocation = nil
             return
         }
+        defer {
+            didStartDragSession = false
+            dragStartLocation = nil
+        }
 
         let deltaX = location.x - startLocation.x
         let deltaY = location.y - startLocation.y
         let distance = sqrt(deltaX * deltaX + deltaY * deltaY)
 
-        if isDragging && distance >= dismissThreshold {
-            // Dismiss with swipe
-            let direction = CGPoint(x: deltaX / max(distance, 1), y: deltaY / max(distance, 1))
-            dismissWithSwipe(direction: direction)
-        } else if isDragging {
-            // Snap back
-            if let initialFrame = initialWindowFrame {
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.2
-                    self.animator().setFrame(initialFrame, display: true)
-                    self.animator().alphaValue = 1.0
-                } completionHandler: { [weak self] in
-                    self?.startDismissTimer()
-                }
-            }
-        } else if !isDragging && distance < 5 {
-            // Click - open preview
-            openInPreview()
+        if didStartDragSession {
+            return
         }
 
-        isDragging = false
-        dragStartLocation = nil
-        initialWindowFrame = nil
+        if distance < 5 {
+            // Click - open preview
+            openInPreview()
+        } else {
+            startDismissTimer()
+        }
     }
 
     private func handleScrollWheel(_ event: NSEvent) {
@@ -266,6 +243,84 @@ public class CapturePreviewWindow: NSWindow {
         dismissTimer?.invalidate()
         dismissTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
             self?.dismiss(action: .save)
+        }
+    }
+
+    private func startDragSession(with event: NSEvent) -> Bool {
+        guard !isDismissing,
+              let contentView = self.contentView,
+              let image = imageView.image,
+              let pasteboardItem = makeDragPasteboardItem(image: image)
+        else {
+            return false
+        }
+
+        let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
+        draggingItem.setDraggingFrame(imageView.frame, contents: image)
+
+        _ = contentView.beginDraggingSession(with: [draggingItem], event: event, source: self)
+
+        dismissTimer?.invalidate()
+        removeEventMonitors()
+        self.orderOut(nil)
+
+        return true
+    }
+
+    private func makeDragPasteboardItem(image: NSImage) -> NSPasteboardItem? {
+        let pasteboardItem = NSPasteboardItem()
+        var hasData = false
+
+        if let tiffData = image.tiffRepresentation {
+            pasteboardItem.setData(tiffData, forType: .tiff)
+            hasData = true
+
+            if let bitmap = NSBitmapImageRep(data: tiffData),
+               let pngData = bitmap.representation(using: .png, properties: [:]) {
+                pasteboardItem.setData(pngData, forType: .png)
+            }
+        }
+
+        if let savedFileURL = savedFileURL {
+            pasteboardItem.setString(savedFileURL.absoluteString, forType: .fileURL)
+            hasData = true
+        }
+
+        return hasData ? pasteboardItem : nil
+    }
+
+    private func restoreAfterCancelledDrag() {
+        guard !isDismissing else { return }
+        self.alphaValue = 1
+        self.orderFront(nil)
+        startDismissTimer()
+        setupEventMonitors()
+    }
+
+    private func completeDragTransfer() {
+        guard !isDismissing else { return }
+        isDismissing = true
+        self.onDismiss?(.save)
+    }
+
+    // MARK: - NSDraggingSource
+
+    public func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
+        return .copy
+    }
+
+    public func ignoreModifierKeys(for session: NSDraggingSession) -> Bool {
+        return true
+    }
+
+    public func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+        didStartDragSession = false
+        dragStartLocation = nil
+
+        if operation.isEmpty {
+            restoreAfterCancelledDrag()
+        } else {
+            completeDragTransfer()
         }
     }
 

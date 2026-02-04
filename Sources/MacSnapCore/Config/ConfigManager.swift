@@ -12,8 +12,14 @@ public final class ConfigManager {
     public static let configDidChangeNotification = Notification.Name("MacSnapConfigDidChange")
 
     private init() {
-        let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        self.configDirectory = homeDir.appendingPathComponent(".config/macsnap")
+        if let overrideDirectory = ProcessInfo.processInfo.environment["MACSNAP_CONFIG_DIR"],
+           !overrideDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let expandedPath = NSString(string: overrideDirectory).expandingTildeInPath
+            self.configDirectory = URL(fileURLWithPath: expandedPath, isDirectory: true)
+        } else {
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser
+            self.configDirectory = homeDir.appendingPathComponent(".config/macsnap")
+        }
         self.configFileURL = configDirectory.appendingPathComponent("config.json")
     }
 
@@ -116,6 +122,7 @@ public final class ConfigManager {
             case "showNotification": return config.capture.showNotification
             case "showPreview": return config.capture.showPreview
             case "previewDuration": return config.capture.previewDuration
+            case "preserveHoverStates": return config.capture.preserveHoverStates
             default: return nil
             }
 
@@ -135,6 +142,7 @@ public final class ConfigManager {
             switch components[1] {
             case "launchAtLogin": return config.advanced.launchAtLogin
             case "showInDock": return config.advanced.showInDock
+            case "showInMenuBar": return config.advanced.showInMenuBar
             case "disableNativeShortcuts": return config.advanced.disableNativeShortcuts
             default: return nil
             }
@@ -204,6 +212,9 @@ public final class ConfigManager {
             case "previewDuration":
                 guard let doubleValue = Double(value) else { return false }
                 config.capture.previewDuration = doubleValue
+            case "preserveHoverStates":
+                guard let boolValue = Bool(value) else { return false }
+                config.capture.preserveHoverStates = boolValue
             default:
                 return false
             }
@@ -233,6 +244,9 @@ public final class ConfigManager {
             case "showInDock":
                 guard let boolValue = Bool(value) else { return false }
                 config.advanced.showInDock = boolValue
+            case "showInMenuBar":
+                guard let boolValue = Bool(value) else { return false }
+                config.advanced.showInMenuBar = boolValue
             case "disableNativeShortcuts":
                 guard let boolValue = Bool(value) else { return false }
                 config.advanced.disableNativeShortcuts = boolValue
@@ -263,6 +277,9 @@ public final class ConfigManager {
             "capture.retinaScale",
             "capture.soundEnabled",
             "capture.showNotification",
+            "capture.showPreview",
+            "capture.previewDuration",
+            "capture.preserveHoverStates",
             "shortcuts.fullScreen",
             "shortcuts.areaSelect",
             "shortcuts.windowCapture",
@@ -270,6 +287,7 @@ public final class ConfigManager {
             "shortcuts.enabled",
             "advanced.launchAtLogin",
             "advanced.showInDock",
+            "advanced.showInMenuBar",
             "advanced.disableNativeShortcuts"
         ]
     }

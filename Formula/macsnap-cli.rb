@@ -1,9 +1,9 @@
 class MacsnapCli < Formula
   desc "Command-line screenshot utility for macOS"
   homepage "https://github.com/1fc0nfig/macsnap"
-  url "https://github.com/1fc0nfig/macsnap/releases/download/v1.1.0/macsnap-cli-v1.1.0.zip"
-  sha256 "50f3631d1b2ce10b850d44b69f69d98a283b8278d3493840a75e43c0b7e47214"
-  version "1.1.0"
+  url "https://github.com/1fc0nfig/macsnap/releases/download/v1.3.0/macsnap-cli-v1.3.0.zip"
+  sha256 "ae4ac1d4573d7aad11ee735f540cb3fb45d2fbbafc5c100a936e8cf6406df53d"
+  version "1.3.0"
   license "MIT"
 
   depends_on :macos => :monterey

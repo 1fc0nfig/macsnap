@@ -1,678 +1,551 @@
 import XCTest
+import Foundation
+import CoreGraphics
 @testable import MacSnapCore
 
-final class MacSnapTests: XCTestCase {
+private enum TestEnvironment {
+    static let configDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("macsnap-tests-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true)
 
-    // MARK: - Config Tests
-
-    func testDefaultConfig() {
-        let config = AppConfig()
-
-        XCTAssertEqual(config.version, "1.0")
-        XCTAssertEqual(config.output.directory, "~/Pictures/macsnap")
-        XCTAssertEqual(config.output.format, .png)
-        XCTAssertEqual(config.output.jpgQuality, 90)
-        XCTAssertTrue(config.output.clipboardEnabled)
-        XCTAssertTrue(config.output.fileEnabled)
+    static func bootstrap() {
+        setenv("MACSNAP_CONFIG_DIR", configDirectory.path, 1)
+        try? resetConfigDirectory()
     }
 
-    func testConfigCodable() throws {
-        let config = AppConfig()
-
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(config)
-
-        let decoder = JSONDecoder()
-        let decoded = try decoder.decode(AppConfig.self, from: data)
-
-        XCTAssertEqual(config, decoded)
-    }
-
-    func testExpandedDirectory() {
-        let config = OutputConfig(directory: "~/Pictures/test")
-        let expanded = config.expandedDirectory
-
-        XCTAssertFalse(expanded.contains("~"))
-        XCTAssertTrue(expanded.contains("/Users/"))
-    }
-
-    func testConfigWithCustomRegion() throws {
-        var config = AppConfig()
-
-        // Initially no custom region
-        XCTAssertFalse(config.customRegion.isSet)
-        XCTAssertEqual(config.customRegion.width, 0)
-
-        // Set a custom region
-        config.customRegion.setFromRect(CGRect(x: 100, y: 200, width: 300, height: 400))
-
-        XCTAssertTrue(config.customRegion.isSet)
-        XCTAssertEqual(config.customRegion.x, 100)
-        XCTAssertEqual(config.customRegion.y, 200)
-        XCTAssertEqual(config.customRegion.width, 300)
-        XCTAssertEqual(config.customRegion.height, 400)
-
-        // Test encoding/decoding
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(config)
-
-        let decoder = JSONDecoder()
-        let decoded = try decoder.decode(AppConfig.self, from: data)
-
-        XCTAssertTrue(decoded.customRegion.isSet)
-        XCTAssertEqual(decoded.customRegion.rect, config.customRegion.rect)
-    }
-
-    func testCustomRegionRect() {
-        var regionConfig = CustomRegionConfig()
-        regionConfig.setFromRect(CGRect(x: 10, y: 20, width: 100, height: 200))
-
-        let rect = regionConfig.rect
-        XCTAssertEqual(rect.origin.x, 10)
-        XCTAssertEqual(rect.origin.y, 20)
-        XCTAssertEqual(rect.width, 100)
-        XCTAssertEqual(rect.height, 200)
-    }
-
-    // MARK: - Filename Generator Tests
-
-    func testFilenameGeneratorBasic() {
-        let generator = FilenameGenerator.shared
-        generator.resetCounter()
-
-        let filename = generator.generate(
-            template: "test_{mode}",
-            mode: .fullScreen,
-            sourceApp: nil
-        )
-
-        XCTAssertEqual(filename, "test_full")
-    }
-
-    func testFilenameGeneratorWithApp() {
-        let generator = FilenameGenerator.shared
-
-        let filename = generator.generate(
-            template: "{app}_{mode}",
-            mode: .window,
-            sourceApp: "Safari"
-        )
-
-        XCTAssertEqual(filename, "Safari_window")
-    }
-
-    func testFilenameGeneratorCounter() {
-        let generator = FilenameGenerator.shared
-        generator.resetCounter()
-
-        let filename1 = generator.generate(
-            template: "test_{counter}",
-            mode: .fullScreen,
-            sourceApp: nil
-        )
-
-        let filename2 = generator.generate(
-            template: "test_{counter}",
-            mode: .fullScreen,
-            sourceApp: nil
-        )
-
-        XCTAssertEqual(filename1, "test_001")
-        XCTAssertEqual(filename2, "test_002")
-    }
-
-    func testFilenameGeneratorSanitization() {
-        let generator = FilenameGenerator.shared
-
-        let filename = generator.generate(
-            template: "{app}",
-            mode: .window,
-            sourceApp: "App/With:Bad*Chars"
-        )
-
-        XCTAssertFalse(filename.contains("/"))
-        XCTAssertFalse(filename.contains(":"))
-        XCTAssertFalse(filename.contains("*"))
-    }
-
-    func testSanitizeForFilename() {
-        let generator = FilenameGenerator.shared
-
-        XCTAssertEqual(generator.sanitizeForFilename("normal"), "normal")
-        XCTAssertEqual(generator.sanitizeForFilename("with spaces"), "with spaces")
-        XCTAssertEqual(generator.sanitizeForFilename("with/slash"), "with-slash")
-        XCTAssertEqual(generator.sanitizeForFilename("with:colon"), "with-colon")
-        XCTAssertEqual(generator.sanitizeForFilename(""), "screenshot")
-        XCTAssertEqual(generator.sanitizeForFilename("..."), "screenshot")
-    }
-
-    func testFilenameGeneratorCustomMode() {
-        let generator = FilenameGenerator.shared
-
-        let filename = generator.generate(
-            template: "snap_{mode}_{datetime}",
-            mode: .custom,
-            sourceApp: nil
-        )
-
-        XCTAssertTrue(filename.contains("custom"))
-    }
-
-    // MARK: - Image Format Tests
-
-    func testImageFormatExtensions() {
-        XCTAssertEqual(ImageFormat.png.fileExtension, "png")
-        XCTAssertEqual(ImageFormat.jpg.fileExtension, "jpg")
-        XCTAssertEqual(ImageFormat.webp.fileExtension, "webp")
-    }
-
-    func testImageFormatUTTypes() {
-        XCTAssertEqual(ImageFormat.png.utType, "public.png")
-        XCTAssertEqual(ImageFormat.jpg.utType, "public.jpeg")
-    }
-
-    func testImageFormatCaseIterable() {
-        let allFormats = ImageFormat.allCases
-        XCTAssertEqual(allFormats.count, 3)
-        XCTAssertTrue(allFormats.contains(.png))
-        XCTAssertTrue(allFormats.contains(.jpg))
-        XCTAssertTrue(allFormats.contains(.webp))
-    }
-
-    // MARK: - Capture Mode Tests
-
-    func testCaptureModeRawValues() {
-        XCTAssertEqual(CaptureMode.fullScreen.rawValue, "full")
-        XCTAssertEqual(CaptureMode.area.rawValue, "area")
-        XCTAssertEqual(CaptureMode.window.rawValue, "window")
-        XCTAssertEqual(CaptureMode.timed.rawValue, "timed")
-        XCTAssertEqual(CaptureMode.custom.rawValue, "custom")
-    }
-
-    func testCaptureModeDisplayNames() {
-        XCTAssertEqual(CaptureMode.fullScreen.displayName, "Full Screen")
-        XCTAssertEqual(CaptureMode.area.displayName, "Selected Area")
-        XCTAssertEqual(CaptureMode.window.displayName, "Window")
-        XCTAssertEqual(CaptureMode.timed.displayName, "Timed Capture")
-        XCTAssertEqual(CaptureMode.custom.displayName, "Custom Region")
-    }
-
-    func testCaptureModeShortcutDescriptions() {
-        XCTAssertFalse(CaptureMode.fullScreen.shortcutDescription.isEmpty)
-        XCTAssertFalse(CaptureMode.area.shortcutDescription.isEmpty)
-        XCTAssertFalse(CaptureMode.window.shortcutDescription.isEmpty)
-        XCTAssertFalse(CaptureMode.custom.shortcutDescription.isEmpty)
-    }
-
-    func testCaptureModeCaseIterable() {
-        let allModes = CaptureMode.allCases
-        XCTAssertEqual(allModes.count, 5)
-    }
-
-    // MARK: - Organize Mode Tests
-
-    func testOrganizeModeValues() {
-        XCTAssertEqual(OrganizeMode.flat.rawValue, "flat")
-        XCTAssertEqual(OrganizeMode.byDate.rawValue, "by-date")
-        XCTAssertEqual(OrganizeMode.byApp.rawValue, "by-app")
-    }
-
-    func testOrganizeModeDisplayNames() {
-        XCTAssertFalse(OrganizeMode.flat.displayName.isEmpty)
-        XCTAssertFalse(OrganizeMode.byDate.displayName.isEmpty)
-        XCTAssertFalse(OrganizeMode.byApp.displayName.isEmpty)
-    }
-
-    // MARK: - Config Manager Tests
-
-    func testConfigManagerGetValue() {
-        let manager = ConfigManager.shared
-
-        // Test getting various values
-        XCTAssertNotNil(manager.getValue(forKey: "output.directory"))
-        XCTAssertNotNil(manager.getValue(forKey: "output.format"))
-        XCTAssertNotNil(manager.getValue(forKey: "capture.includeCursor"))
-        XCTAssertNotNil(manager.getValue(forKey: "shortcuts.fullScreen"))
-        XCTAssertNotNil(manager.getValue(forKey: "advanced.launchAtLogin"))
-
-        // Test invalid key
-        XCTAssertNil(manager.getValue(forKey: "invalid.key"))
-        XCTAssertNil(manager.getValue(forKey: ""))
-    }
-
-    func testConfigManagerSetValue() {
-        let manager = ConfigManager.shared
-
-        // Save original value
-        let originalFormat = manager.getValue(forKey: "output.format") as? String
-
-        // Set new value
-        XCTAssertTrue(manager.setValue("jpg", forKey: "output.format"))
-
-        // Verify change
-        XCTAssertEqual(manager.getValue(forKey: "output.format") as? String, "jpg")
-
-        // Restore original
-        if let original = originalFormat {
-            manager.setValue(original, forKey: "output.format")
+    static func resetConfigDirectory() throws {
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: configDirectory.path) {
+            try fileManager.removeItem(at: configDirectory)
         }
-    }
-
-    func testConfigManagerSetInvalidValue() {
-        let manager = ConfigManager.shared
-
-        // Try to set invalid values
-        XCTAssertFalse(manager.setValue("invalid", forKey: "output.format"))
-        XCTAssertFalse(manager.setValue("abc", forKey: "output.jpgQuality"))
-        XCTAssertFalse(manager.setValue("maybe", forKey: "capture.includeCursor"))
-    }
-
-    func testConfigManagerAllKeys() {
-        let keys = ConfigManager.shared.allKeys()
-
-        XCTAssertTrue(keys.contains("output.directory"))
-        XCTAssertTrue(keys.contains("output.format"))
-        XCTAssertTrue(keys.contains("capture.includeCursor"))
-        XCTAssertTrue(keys.contains("shortcuts.fullScreen"))
-        XCTAssertTrue(keys.contains("advanced.launchAtLogin"))
-
-        // Should have reasonable number of keys
-        XCTAssertGreaterThan(keys.count, 10)
-    }
-
-    // MARK: - Hotkey Tests
-
-    func testHotkeyFormatting() {
-        XCTAssertEqual(HotkeyManager.formatShortcut("cmd+shift+1"), "⌘⇧1")
-        XCTAssertEqual(HotkeyManager.formatShortcut("command+shift+2"), "⌘⇧2")
-        XCTAssertEqual(HotkeyManager.formatShortcut("ctrl+alt+a"), "⌃⌥A")
-        XCTAssertEqual(HotkeyManager.formatShortcut("cmd+a"), "⌘A")
-    }
-
-    func testHotkeyValidation() {
-        XCTAssertTrue(HotkeyManager.isValidShortcut("cmd+shift+1"))
-        XCTAssertTrue(HotkeyManager.isValidShortcut("ctrl+a"))
-        XCTAssertTrue(HotkeyManager.isValidShortcut("cmd+alt+shift+f1"))
-        XCTAssertFalse(HotkeyManager.isValidShortcut("1")) // No modifier
-        XCTAssertFalse(HotkeyManager.isValidShortcut("cmd")) // No key
-        XCTAssertFalse(HotkeyManager.isValidShortcut("")) // Empty
-    }
-
-    // MARK: - Window Info Tests
-
-    func testWindowInfoDisplayTitle() {
-        let window1 = WindowInfo(
-            windowID: 1,
-            ownerName: "Safari",
-            windowName: "Apple",
-            bounds: .zero,
-            layer: 0,
-            isOnScreen: true
-        )
-        XCTAssertEqual(window1.displayTitle, "Safari - Apple")
-
-        let window2 = WindowInfo(
-            windowID: 2,
-            ownerName: "Finder",
-            windowName: "",
-            bounds: .zero,
-            layer: 0,
-            isOnScreen: true
-        )
-        XCTAssertEqual(window2.displayTitle, "Finder")
-    }
-
-    func testWindowInfoWithBounds() {
-        let bounds = CGRect(x: 100, y: 200, width: 800, height: 600)
-        let window = WindowInfo(
-            windowID: 123,
-            ownerName: "TestApp",
-            windowName: "Test Window",
-            bounds: bounds,
-            layer: 0,
-            isOnScreen: true
-        )
-
-        XCTAssertEqual(window.windowID, 123)
-        XCTAssertEqual(window.bounds.origin.x, 100)
-        XCTAssertEqual(window.bounds.origin.y, 200)
-        XCTAssertEqual(window.bounds.width, 800)
-        XCTAssertEqual(window.bounds.height, 600)
-    }
-
-    // MARK: - Screen Info Tests
-
-    func testScreenInfoCreation() {
-        let screen = ScreenInfo(
-            displayID: 1,
-            frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
-            isMain: true
-        )
-
-        XCTAssertEqual(screen.displayID, 1)
-        XCTAssertEqual(screen.frame.width, 1920)
-        XCTAssertEqual(screen.frame.height, 1080)
-        XCTAssertTrue(screen.isMain)
-    }
-
-    // MARK: - Capture Result Tests
-
-    func testCaptureResultDimensions() {
-        // Create a test image
-        let width = 100
-        let height = 50
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo.rawValue
-        ),
-        let image = context.makeImage() else {
-            XCTFail("Failed to create test image")
-            return
-        }
-
-        let result = CaptureResult(
-            image: image,
-            mode: .fullScreen,
-            captureRect: CGRect(x: 0, y: 0, width: 100, height: 50)
-        )
-
-        XCTAssertEqual(result.width, 100)
-        XCTAssertEqual(result.height, 50)
-        XCTAssertEqual(result.mode, .fullScreen)
-        XCTAssertNil(result.sourceApp)
-    }
-
-    func testCaptureResultWithSourceApp() {
-        let width = 100
-        let height = 50
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo.rawValue
-        ),
-        let image = context.makeImage() else {
-            XCTFail("Failed to create test image")
-            return
-        }
-
-        let result = CaptureResult(
-            image: image,
-            mode: .window,
-            captureRect: CGRect(x: 0, y: 0, width: 100, height: 50),
-            sourceApp: "Safari"
-        )
-
-        XCTAssertEqual(result.sourceApp, "Safari")
-        XCTAssertEqual(result.mode, .window)
-    }
-
-    func testCaptureResultTimestamp() {
-        let width = 10
-        let height = 10
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo.rawValue
-        ),
-        let image = context.makeImage() else {
-            XCTFail("Failed to create test image")
-            return
-        }
-
-        let beforeCapture = Date()
-        let result = CaptureResult(
-            image: image,
-            mode: .fullScreen,
-            captureRect: .zero
-        )
-        let afterCapture = Date()
-
-        XCTAssertGreaterThanOrEqual(result.timestamp, beforeCapture)
-        XCTAssertLessThanOrEqual(result.timestamp, afterCapture)
-    }
-
-    // MARK: - Capture Error Tests
-
-    func testCaptureErrorDescriptions() {
-        XCTAssertNotNil(CaptureError.noScreensAvailable.errorDescription)
-        XCTAssertNotNil(CaptureError.capturePermissionDenied.errorDescription)
-        XCTAssertNotNil(CaptureError.captureFailed.errorDescription)
-        XCTAssertNotNil(CaptureError.windowNotFound.errorDescription)
-        XCTAssertNotNil(CaptureError.invalidRect.errorDescription)
-        XCTAssertNotNil(CaptureError.cancelled.errorDescription)
-
-        // Check they're meaningful
-        XCTAssertTrue(CaptureError.capturePermissionDenied.errorDescription!.contains("permission"))
-        XCTAssertTrue(CaptureError.windowNotFound.errorDescription!.contains("window"))
-    }
-
-    // MARK: - Custom Region Tests
-
-    func testCustomRegionCodable() throws {
-        let region = CustomRegion(
-            name: "TestRegion",
-            rect: CGRect(x: 100, y: 200, width: 300, height: 400)
-        )
-
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(region)
-
-        let decoder = JSONDecoder()
-        let decoded = try decoder.decode(CustomRegion.self, from: data)
-
-        XCTAssertEqual(decoded.name, "TestRegion")
-        XCTAssertEqual(decoded.rect.origin.x, 100)
-        XCTAssertEqual(decoded.rect.origin.y, 200)
-        XCTAssertEqual(decoded.rect.width, 300)
-        XCTAssertEqual(decoded.rect.height, 400)
-    }
-
-    func testCustomRegionEquatable() {
-        let region1 = CustomRegion(name: "Region1", rect: CGRect(x: 0, y: 0, width: 100, height: 100))
-        let region2 = CustomRegion(name: "Region1", rect: CGRect(x: 0, y: 0, width: 100, height: 100))
-        let region3 = CustomRegion(name: "Region2", rect: CGRect(x: 0, y: 0, width: 100, height: 100))
-
-        XCTAssertEqual(region1, region2)
-        XCTAssertNotEqual(region1, region3)
-    }
-
-    // MARK: - Shortcuts Config Tests
-
-    func testShortcutsConfigDefaults() {
-        let shortcuts = ShortcutsConfig()
-
-        XCTAssertEqual(shortcuts.fullScreen, "cmd+shift+1")
-        XCTAssertEqual(shortcuts.areaSelect, "cmd+shift+2")
-        XCTAssertEqual(shortcuts.windowCapture, "cmd+shift+3")
-        XCTAssertEqual(shortcuts.customRegion, "cmd+shift+4")
-        XCTAssertTrue(shortcuts.enabled)
-    }
-
-    func testShortcutsConfigCodable() throws {
-        let shortcuts = ShortcutsConfig(
-            fullScreen: "cmd+1",
-            areaSelect: "cmd+2",
-            windowCapture: "cmd+3",
-            customRegion: "cmd+4",
-            enabled: false
-        )
-
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(shortcuts)
-
-        let decoder = JSONDecoder()
-        let decoded = try decoder.decode(ShortcutsConfig.self, from: data)
-
-        XCTAssertEqual(decoded.fullScreen, "cmd+1")
-        XCTAssertEqual(decoded.areaSelect, "cmd+2")
-        XCTAssertEqual(decoded.windowCapture, "cmd+3")
-        XCTAssertEqual(decoded.customRegion, "cmd+4")
-        XCTAssertFalse(decoded.enabled)
-    }
-
-    // MARK: - Capture Engine Tests
-
-    func testCaptureEngineGetScreens() {
-        let screens = CaptureEngine.shared.getScreens()
-
-        // Should have at least one screen
-        XCTAssertGreaterThanOrEqual(screens.count, 1)
-
-        // Should have exactly one main screen
-        let mainScreens = screens.filter { $0.isMain }
-        XCTAssertEqual(mainScreens.count, 1)
-    }
-
-    func testCaptureEngineMainScreen() {
-        let mainScreen = CaptureEngine.shared.mainScreen()
-
-        XCTAssertNotNil(mainScreen)
-        XCTAssertTrue(mainScreen!.isMain)
-        XCTAssertGreaterThan(mainScreen!.frame.width, 0)
-        XCTAssertGreaterThan(mainScreen!.frame.height, 0)
-    }
-
-    func testCaptureEngineGetWindows() {
-        let windows = CaptureEngine.shared.getWindows()
-
-        // Note: might be 0 windows in headless test environment
-        // but the function should not crash
-        XCTAssertNotNil(windows)
-
-        // If there are windows, check they have valid bounds
-        for window in windows {
-            XCTAssertGreaterThanOrEqual(window.bounds.width, 50)
-            XCTAssertGreaterThanOrEqual(window.bounds.height, 50)
-        }
-    }
-
-    func testCaptureEngineMouseLocation() {
-        let location = CaptureEngine.shared.getMouseLocationInCGCoordinates()
-
-        // Mouse location should be valid (could be anywhere)
-        // Just verify it returns a point
-        XCTAssertTrue(location.x.isFinite)
-        XCTAssertTrue(location.y.isFinite)
-    }
-
-    func testCaptureEngineDisplayAtCursor() {
-        let displayID = CaptureEngine.shared.displayAtCursor()
-
-        // Should return a valid display ID
-        XCTAssertGreaterThan(displayID, 0)
-    }
-
-    func testCaptureEngineScreenAtCursor() {
-        let screen = CaptureEngine.shared.screenAtCursor()
-
-        // Should find a screen (unless in very unusual setup)
-        XCTAssertNotNil(screen)
-    }
-
-    // MARK: - Retina Scale Tests
-
-    func testRetinaScaleValues() {
-        XCTAssertEqual(RetinaScale.auto.rawValue, "auto")
-        XCTAssertEqual(RetinaScale.oneX.rawValue, "1x")
-        XCTAssertEqual(RetinaScale.twoX.rawValue, "2x")
-    }
-
-    func testRetinaScaleDisplayNames() {
-        XCTAssertFalse(RetinaScale.auto.displayName.isEmpty)
-        XCTAssertFalse(RetinaScale.oneX.displayName.isEmpty)
-        XCTAssertFalse(RetinaScale.twoX.displayName.isEmpty)
-    }
-
-    // MARK: - Advanced Config Tests
-
-    func testAdvancedConfigDefaults() {
-        let advanced = AdvancedConfig()
-
-        XCTAssertFalse(advanced.launchAtLogin)
-        XCTAssertFalse(advanced.showInDock)
-        XCTAssertFalse(advanced.disableNativeShortcuts)
-    }
-
-    // MARK: - Capture Config Tests
-
-    func testCaptureConfigDefaults() {
-        let capture = CaptureConfig()
-
-        XCTAssertFalse(capture.includeCursor)
-        XCTAssertTrue(capture.includeShadow)
-        XCTAssertEqual(capture.retinaScale, .auto)
-        XCTAssertFalse(capture.soundEnabled)
-        XCTAssertTrue(capture.showNotification)
-    }
-
-    // MARK: - Output Config Tests
-
-    func testOutputConfigDefaults() {
-        let output = OutputConfig()
-
-        XCTAssertEqual(output.directory, "~/Pictures/macsnap")
-        XCTAssertEqual(output.format, .png)
-        XCTAssertEqual(output.jpgQuality, 90)
-        XCTAssertEqual(output.organize, .byDate)
-        XCTAssertTrue(output.clipboardEnabled)
-        XCTAssertTrue(output.fileEnabled)
-    }
-
-    func testOutputConfigExpandedDirectory() {
-        let output = OutputConfig(directory: "~/Desktop/screenshots")
-        let expanded = output.expandedDirectory
-
-        XCTAssertFalse(expanded.hasPrefix("~"))
-        XCTAssertTrue(expanded.contains("Desktop/screenshots"))
+        try fileManager.createDirectory(at: configDirectory, withIntermediateDirectories: true)
     }
 }
 
-// MARK: - Performance Tests
+private let _testBootstrap: Void = {
+    TestEnvironment.bootstrap()
+    return ()
+}()
 
-extension MacSnapTests {
-    func testFilenameGeneratorPerformance() {
-        let generator = FilenameGenerator.shared
+private func makeTestImage(width: Int = 40, height: Int = 20) throws -> CGImage {
+    guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+          let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+          ) else {
+        throw XCTSkip("Unable to create test graphics context")
+    }
 
-        measure {
-            for _ in 0..<1000 {
-                _ = generator.generate(
-                    template: "test_{datetime}_{mode}_{counter}",
-                    mode: .fullScreen,
-                    sourceApp: "TestApp"
-                )
+    context.setFillColor(CGColor(red: 0.2, green: 0.4, blue: 0.8, alpha: 1.0))
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+    guard let image = context.makeImage() else {
+        throw XCTSkip("Unable to create test image")
+    }
+
+    return image
+}
+
+final class ConfigModelTests: XCTestCase {
+    override func setUpWithError() throws {
+        _ = _testBootstrap
+    }
+
+    func testAppConfigDefaultsMatchCurrentVersion() {
+        let config = AppConfig()
+
+        XCTAssertEqual(config.version, "1.3.0")
+        XCTAssertEqual(config.output.directory, "~/Pictures/macsnap")
+        XCTAssertEqual(config.output.format, .png)
+        XCTAssertEqual(config.output.organize, .byDate)
+        XCTAssertTrue(config.capture.preserveHoverStates)
+        XCTAssertTrue(config.advanced.showInMenuBar)
+        XCTAssertTrue(config.advanced.disableNativeShortcuts)
+    }
+
+    func testAppConfigCodableRoundTrip() throws {
+        var config = AppConfig()
+        config.output.format = .jpg
+        config.output.jpgQuality = 82
+        config.capture.showPreview = false
+        config.advanced.showInDock = true
+        config.customRegion.setFromRect(CGRect(x: 10, y: 20, width: 300, height: 200))
+
+        let encoded = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(AppConfig.self, from: encoded)
+
+        XCTAssertEqual(decoded, config)
+    }
+
+    func testCaptureConfigDecodingAppliesDefaultsForMissingFields() throws {
+        let json = #"{"includeCursor":true}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(CaptureConfig.self, from: json)
+
+        XCTAssertTrue(decoded.includeCursor)
+        XCTAssertTrue(decoded.includeShadow)
+        XCTAssertEqual(decoded.retinaScale, .auto)
+        XCTAssertTrue(decoded.showNotification)
+        XCTAssertTrue(decoded.showPreview)
+        XCTAssertTrue(decoded.preserveHoverStates)
+    }
+
+    func testAdvancedConfigDecodingAppliesDefaultsForMissingFields() throws {
+        let json = #"{"launchAtLogin":true,"showInDock":true}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AdvancedConfig.self, from: json)
+
+        XCTAssertTrue(decoded.launchAtLogin)
+        XCTAssertTrue(decoded.showInDock)
+        XCTAssertTrue(decoded.showInMenuBar)
+        XCTAssertTrue(decoded.disableNativeShortcuts)
+    }
+
+    func testCustomAndAreaRegionHelpers() {
+        var custom = CustomRegionConfig()
+        var area = AreaRegionConfig()
+
+        custom.setFromRect(CGRect(x: 1, y: 2, width: 3, height: 4))
+        area.setFromRect(CGRect(x: 11, y: 12, width: 13, height: 14))
+
+        XCTAssertTrue(custom.isSet)
+        XCTAssertEqual(custom.rect, CGRect(x: 1, y: 2, width: 3, height: 4))
+        XCTAssertTrue(area.isSet)
+        XCTAssertEqual(area.rect, CGRect(x: 11, y: 12, width: 13, height: 14))
+
+        area.reset()
+
+        XCTAssertFalse(area.isSet)
+        XCTAssertEqual(area.rect, .zero)
+    }
+
+    func testOutputExpandedDirectoryExpandsTilde() {
+        let output = OutputConfig(directory: "~/Desktop/macsnap-tests")
+        XCTAssertFalse(output.expandedDirectory.hasPrefix("~"))
+        XCTAssertTrue(output.expandedDirectory.contains("Desktop/macsnap-tests"))
+    }
+}
+
+final class ConfigManagerTests: XCTestCase {
+    override func setUpWithError() throws {
+        _ = _testBootstrap
+        try TestEnvironment.resetConfigDirectory()
+        ConfigManager.shared.resetToDefaults()
+    }
+
+    func testLoadConfigCreatesDefaultFileWhenMissing() throws {
+        let manager = ConfigManager.shared
+        let configPath = TestEnvironment.configDirectory.appendingPathComponent("config.json")
+
+        if FileManager.default.fileExists(atPath: configPath.path) {
+            try FileManager.default.removeItem(at: configPath)
+        }
+
+        let loaded = manager.loadConfig()
+
+        XCTAssertEqual(loaded.version, "1.3.0")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: configPath.path))
+    }
+
+    func testGetValueSupportsCurrentConfigKeys() {
+        let manager = ConfigManager.shared
+
+        XCTAssertEqual(manager.getValue(forKey: "output.format") as? String, "png")
+        XCTAssertEqual(manager.getValue(forKey: "capture.showPreview") as? Bool, true)
+        XCTAssertEqual(manager.getValue(forKey: "capture.preserveHoverStates") as? Bool, true)
+        XCTAssertEqual(manager.getValue(forKey: "advanced.showInMenuBar") as? Bool, true)
+        XCTAssertNil(manager.getValue(forKey: "advanced.unknown"))
+        XCTAssertNil(manager.getValue(forKey: ""))
+    }
+
+    func testSetValueAcceptsTypedValuesAndBoolAliases() {
+        let manager = ConfigManager.shared
+
+        XCTAssertTrue(manager.setValue("jpg", forKey: "output.format"))
+        XCTAssertTrue(manager.setValue("75", forKey: "output.jpgQuality"))
+        XCTAssertTrue(manager.setValue("false", forKey: "capture.showPreview"))
+        XCTAssertTrue(manager.setValue("yes", forKey: "capture.preserveHoverStates"))
+        XCTAssertTrue(manager.setValue("0", forKey: "advanced.showInMenuBar"))
+
+        XCTAssertEqual(manager.getValue(forKey: "output.format") as? String, "jpg")
+        XCTAssertEqual(manager.getValue(forKey: "output.jpgQuality") as? Int, 75)
+        XCTAssertEqual(manager.getValue(forKey: "capture.showPreview") as? Bool, false)
+        XCTAssertEqual(manager.getValue(forKey: "capture.preserveHoverStates") as? Bool, true)
+        XCTAssertEqual(manager.getValue(forKey: "advanced.showInMenuBar") as? Bool, false)
+    }
+
+    func testCanUpdateShortcutBindingsAndReadBackValues() {
+        let manager = ConfigManager.shared
+
+        XCTAssertTrue(manager.setValue("cmd+option+9", forKey: "shortcuts.fullScreen"))
+        XCTAssertTrue(manager.setValue("ctrl+shift+a", forKey: "shortcuts.areaSelect"))
+        XCTAssertTrue(manager.setValue("cmd+ctrl+w", forKey: "shortcuts.windowCapture"))
+        XCTAssertTrue(manager.setValue("cmd+shift+f12", forKey: "shortcuts.customRegion"))
+        XCTAssertTrue(manager.setValue("false", forKey: "shortcuts.enabled"))
+
+        XCTAssertEqual(manager.getValue(forKey: "shortcuts.fullScreen") as? String, "cmd+option+9")
+        XCTAssertEqual(manager.getValue(forKey: "shortcuts.areaSelect") as? String, "ctrl+shift+a")
+        XCTAssertEqual(manager.getValue(forKey: "shortcuts.windowCapture") as? String, "cmd+ctrl+w")
+        XCTAssertEqual(manager.getValue(forKey: "shortcuts.customRegion") as? String, "cmd+shift+f12")
+        XCTAssertEqual(manager.getValue(forKey: "shortcuts.enabled") as? Bool, false)
+    }
+
+    func testCanUpdateEveryPublicSettingKeyAndPersistToDisk() {
+        let manager = ConfigManager.shared
+        let outputDirectory = TestEnvironment.configDirectory.appendingPathComponent("persisted-output", isDirectory: true).path
+
+        let updates: [(key: String, value: String)] = [
+            ("output.directory", outputDirectory),
+            ("output.format", "jpg"),
+            ("output.jpgQuality", "81"),
+            ("output.filenameTemplate", "snap_{mode}_{counter}"),
+            ("output.organize", "by-app"),
+            ("output.clipboardEnabled", "false"),
+            ("output.fileEnabled", "true"),
+            ("capture.includeCursor", "true"),
+            ("capture.includeShadow", "false"),
+            ("capture.retinaScale", "1x"),
+            ("capture.soundEnabled", "true"),
+            ("capture.showNotification", "false"),
+            ("capture.showPreview", "false"),
+            ("capture.previewDuration", "3.5"),
+            ("capture.preserveHoverStates", "false"),
+            ("shortcuts.fullScreen", "cmd+1"),
+            ("shortcuts.areaSelect", "cmd+2"),
+            ("shortcuts.windowCapture", "cmd+3"),
+            ("shortcuts.customRegion", "cmd+4"),
+            ("shortcuts.enabled", "true"),
+            ("advanced.launchAtLogin", "true"),
+            ("advanced.showInDock", "true"),
+            ("advanced.showInMenuBar", "false"),
+            ("advanced.disableNativeShortcuts", "false")
+        ]
+
+        for update in updates {
+            XCTAssertTrue(manager.setValue(update.value, forKey: update.key), "Failed setting \(update.key)")
+        }
+
+        XCTAssertEqual(manager.getValue(forKey: "output.format") as? String, "jpg")
+        XCTAssertEqual(manager.getValue(forKey: "capture.retinaScale") as? String, "1x")
+        let previewDuration = manager.getValue(forKey: "capture.previewDuration") as? Double
+        XCTAssertEqual(previewDuration ?? -1, 3.5, accuracy: 0.0001)
+        XCTAssertEqual(manager.getValue(forKey: "shortcuts.fullScreen") as? String, "cmd+1")
+        XCTAssertEqual(manager.getValue(forKey: "advanced.showInMenuBar") as? Bool, false)
+
+        let reloaded = manager.loadConfig()
+        XCTAssertEqual(reloaded.output.directory, outputDirectory)
+        XCTAssertEqual(reloaded.output.format, .jpg)
+        XCTAssertEqual(reloaded.output.jpgQuality, 81)
+        XCTAssertEqual(reloaded.output.filenameTemplate, "snap_{mode}_{counter}")
+        XCTAssertEqual(reloaded.output.organize, .byApp)
+        XCTAssertFalse(reloaded.output.clipboardEnabled)
+        XCTAssertTrue(reloaded.output.fileEnabled)
+        XCTAssertTrue(reloaded.capture.includeCursor)
+        XCTAssertFalse(reloaded.capture.includeShadow)
+        XCTAssertEqual(reloaded.capture.retinaScale, .oneX)
+        XCTAssertTrue(reloaded.capture.soundEnabled)
+        XCTAssertFalse(reloaded.capture.showNotification)
+        XCTAssertFalse(reloaded.capture.showPreview)
+        XCTAssertEqual(reloaded.capture.previewDuration, 3.5, accuracy: 0.0001)
+        XCTAssertFalse(reloaded.capture.preserveHoverStates)
+        XCTAssertEqual(reloaded.shortcuts.fullScreen, "cmd+1")
+        XCTAssertEqual(reloaded.shortcuts.areaSelect, "cmd+2")
+        XCTAssertEqual(reloaded.shortcuts.windowCapture, "cmd+3")
+        XCTAssertEqual(reloaded.shortcuts.customRegion, "cmd+4")
+        XCTAssertTrue(reloaded.shortcuts.enabled)
+        XCTAssertTrue(reloaded.advanced.launchAtLogin)
+        XCTAssertTrue(reloaded.advanced.showInDock)
+        XCTAssertFalse(reloaded.advanced.showInMenuBar)
+        XCTAssertFalse(reloaded.advanced.disableNativeShortcuts)
+    }
+
+    func testSetValueRejectsInvalidValues() {
+        let manager = ConfigManager.shared
+
+        XCTAssertFalse(manager.setValue("invalid", forKey: "output.format"))
+        XCTAssertFalse(manager.setValue("101", forKey: "output.jpgQuality"))
+        XCTAssertFalse(manager.setValue("not-a-number", forKey: "capture.previewDuration"))
+        XCTAssertFalse(manager.setValue("maybe", forKey: "advanced.showInDock"))
+        XCTAssertFalse(manager.setValue("true", forKey: "unknown.key"))
+    }
+
+    func testAllKeysIncludesNewlySupportedFields() {
+        let keys = ConfigManager.shared.allKeys()
+
+        XCTAssertTrue(keys.contains("capture.showPreview"))
+        XCTAssertTrue(keys.contains("capture.previewDuration"))
+        XCTAssertTrue(keys.contains("capture.preserveHoverStates"))
+        XCTAssertTrue(keys.contains("advanced.showInMenuBar"))
+    }
+
+    func testEnsureOutputDirectoryExistsCreatesDirectory() throws {
+        let manager = ConfigManager.shared
+        let outputPath = TestEnvironment.configDirectory.appendingPathComponent("output-dir").path
+
+        XCTAssertTrue(manager.setValue(outputPath, forKey: "output.directory"))
+
+        try manager.ensureOutputDirectoryExists()
+
+        var isDirectory: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outputPath, isDirectory: &isDirectory))
+        XCTAssertTrue(isDirectory.boolValue)
+    }
+
+    func testEnsureOutputDirectoryExistsRejectsFilePath() throws {
+        let manager = ConfigManager.shared
+        let filePath = TestEnvironment.configDirectory.appendingPathComponent("not-a-directory").path
+        FileManager.default.createFile(atPath: filePath, contents: Data("x".utf8))
+        XCTAssertTrue(manager.setValue(filePath, forKey: "output.directory"))
+
+        do {
+            try manager.ensureOutputDirectoryExists()
+            XCTFail("Expected ensureOutputDirectoryExists to throw")
+        } catch let error as ConfigError {
+            switch error {
+            case .outputPathNotDirectory:
+                break
+            default:
+                XCTFail("Unexpected ConfigError: \(error)")
             }
         }
     }
 
-    func testConfigEncodingPerformance() throws {
-        let config = AppConfig()
-        let encoder = JSONEncoder()
+    func testConfigSetterPostsChangeNotification() {
+        let expectation = expectation(forNotification: ConfigManager.configDidChangeNotification, object: nil)
+        ConfigManager.shared.config = AppConfig()
+        wait(for: [expectation], timeout: 1.0)
+    }
+}
 
-        measure {
-            for _ in 0..<1000 {
-                _ = try? encoder.encode(config)
+final class FilenameGeneratorTests: XCTestCase {
+    override func setUpWithError() throws {
+        _ = _testBootstrap
+        FilenameGenerator.shared.resetCounter()
+    }
+
+    func testTemplateVariablesAreReplacedDeterministically() {
+        let timestamp = Date(timeIntervalSince1970: 1_706_280_652)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HHmmss"
+
+        let expectedDate = dateFormatter.string(from: timestamp)
+        let expectedTime = timeFormatter.string(from: timestamp)
+        let filename = FilenameGenerator.shared.generate(
+            template: "{date}_{time}_{timestamp}_{mode}_{app}_{counter}",
+            mode: .window,
+            sourceApp: "Safari",
+            timestamp: timestamp
+        )
+
+        XCTAssertEqual(filename, "\(expectedDate)_\(expectedTime)_1706280652_window_Safari_001")
+    }
+
+    func testCounterResetsWhenDateChanges() {
+        let firstDate = Date(timeIntervalSince1970: 1_706_280_652)
+        let nextDay = Date(timeIntervalSince1970: 1_706_367_052)
+
+        let first = FilenameGenerator.shared.generate(template: "{counter}", mode: .fullScreen, sourceApp: nil, timestamp: firstDate)
+        let second = FilenameGenerator.shared.generate(template: "{counter}", mode: .fullScreen, sourceApp: nil, timestamp: firstDate)
+        let third = FilenameGenerator.shared.generate(template: "{counter}", mode: .fullScreen, sourceApp: nil, timestamp: nextDay)
+
+        XCTAssertEqual(first, "001")
+        XCTAssertEqual(second, "002")
+        XCTAssertEqual(third, "001")
+    }
+
+    func testSanitizeForFilenameHandlesEdgeCases() {
+        let generator = FilenameGenerator.shared
+        let longName = String(repeating: "a", count: 250)
+
+        XCTAssertEqual(generator.sanitizeForFilename("with/slash:and*chars"), "with-slash-and-chars")
+        XCTAssertEqual(generator.sanitizeForFilename("..."), "screenshot")
+        XCTAssertEqual(generator.sanitizeForFilename(""), "screenshot")
+        XCTAssertEqual(generator.sanitizeForFilename(longName).count, 200)
+    }
+
+    func testGenerateForCaptureResultUsesCurrentTemplate() throws {
+        try TestEnvironment.resetConfigDirectory()
+        ConfigManager.shared.resetToDefaults()
+        XCTAssertTrue(ConfigManager.shared.setValue("snap_{mode}", forKey: "output.filenameTemplate"))
+
+        let result = CaptureResult(
+            image: try makeTestImage(),
+            mode: .fullScreen,
+            captureRect: CGRect(x: 0, y: 0, width: 40, height: 20),
+            sourceApp: nil
+        )
+
+        let filename = FilenameGenerator.shared.generate(for: result)
+        XCTAssertEqual(filename, "snap_full")
+    }
+
+    func testAvailableVariablesCoversTemplateDocs() {
+        let variables = Set(FilenameGenerator.availableVariables.map(\.variable))
+        XCTAssertEqual(variables, Set(["{datetime}", "{date}", "{time}", "{timestamp}", "{mode}", "{app}", "{counter}"]))
+    }
+}
+
+final class FileWriterTests: XCTestCase {
+    override func setUpWithError() throws {
+        _ = _testBootstrap
+        try TestEnvironment.resetConfigDirectory()
+        ConfigManager.shared.resetToDefaults()
+
+        let outputPath = TestEnvironment.configDirectory.appendingPathComponent("captures", isDirectory: true).path
+        XCTAssertTrue(ConfigManager.shared.setValue(outputPath, forKey: "output.directory"))
+    }
+
+    func testGetOutputPathFlatMode() throws {
+        XCTAssertTrue(ConfigManager.shared.setValue("flat", forKey: "output.organize"))
+        XCTAssertTrue(ConfigManager.shared.setValue("png", forKey: "output.format"))
+
+        let url = try FileWriter.shared.getOutputPath(filename: "test", mode: .fullScreen, sourceApp: nil)
+
+        XCTAssertEqual(url.lastPathComponent, "test.png")
+        XCTAssertEqual(url.deletingLastPathComponent().path, ConfigManager.shared.config.output.expandedDirectory)
+    }
+
+    func testGetOutputPathByDateMode() throws {
+        XCTAssertTrue(ConfigManager.shared.setValue("by-date", forKey: "output.organize"))
+
+        let url = try FileWriter.shared.getOutputPath(filename: "by-date", mode: .fullScreen, sourceApp: nil)
+        let dateDirectory = url.deletingLastPathComponent().lastPathComponent
+
+        XCTAssertEqual(dateDirectory.count, 10)
+        XCTAssertEqual(dateDirectory.filter({ $0 == "-" }).count, 2)
+        XCTAssertEqual(url.lastPathComponent, "by-date.png")
+    }
+
+    func testGetOutputPathByAppModeSanitizesAppName() throws {
+        XCTAssertTrue(ConfigManager.shared.setValue("by-app", forKey: "output.organize"))
+
+        let url = try FileWriter.shared.getOutputPath(filename: "by-app", mode: .window, sourceApp: "Safari/Preview:Main")
+        XCTAssertTrue(url.path.contains("Safari-Preview-Main"))
+
+        let unknownURL = try FileWriter.shared.getOutputPath(filename: "by-app", mode: .window, sourceApp: nil)
+        XCTAssertTrue(unknownURL.path.contains("/Unknown/"))
+    }
+
+    func testSaveImageWritesPngAndJpg() throws {
+        let image = try makeTestImage(width: 24, height: 24)
+        let outputDir = URL(fileURLWithPath: ConfigManager.shared.config.output.expandedDirectory)
+
+        let pngURL = outputDir.appendingPathComponent("sample.png")
+        let jpgURL = outputDir.appendingPathComponent("sample.jpg")
+
+        try FileWriter.shared.saveImage(image, to: pngURL, format: .png)
+        try FileWriter.shared.saveImage(image, to: jpgURL, format: .jpg)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pngURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: jpgURL.path))
+        XCTAssertGreaterThan(FileWriter.shared.getFileSize(pngURL) ?? 0, 0)
+        XCTAssertGreaterThan(FileWriter.shared.getFileSize(jpgURL) ?? 0, 0)
+    }
+
+    func testSaveImageWebPFallbackProducesPngBytes() throws {
+        let image = try makeTestImage(width: 24, height: 24)
+        let outputDir = URL(fileURLWithPath: ConfigManager.shared.config.output.expandedDirectory)
+        let webpURL = outputDir.appendingPathComponent("sample.webp")
+
+        try FileWriter.shared.saveImage(image, to: webpURL, format: .webp)
+
+        let data = try Data(contentsOf: webpURL)
+        let pngSignature = [UInt8](data.prefix(8))
+        XCTAssertEqual(pngSignature, [137, 80, 78, 71, 13, 10, 26, 10])
+    }
+
+    func testSaveCaptureResultToExplicitPath() throws {
+        let result = CaptureResult(
+            image: try makeTestImage(width: 16, height: 12),
+            mode: .fullScreen,
+            captureRect: CGRect(x: 0, y: 0, width: 16, height: 12)
+        )
+        let destination = TestEnvironment.configDirectory.appendingPathComponent("explicit/output.png")
+
+        let savedURL = try FileWriter.shared.save(result, to: destination)
+
+        XCTAssertEqual(savedURL.path, destination.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    func testFileSizeFormatting() {
+        XCTAssertFalse(FileWriter.shared.formatFileSize(1_024).isEmpty)
+        XCTAssertFalse(FileWriter.shared.formatFileSize(10_485_760).isEmpty)
+    }
+}
+
+final class HotkeyAndCaptureTests: XCTestCase {
+    func testHotkeyFormattingAndValidation() {
+        XCTAssertEqual(HotkeyManager.formatShortcut("cmd+shift+1"), "⌘⇧1")
+        XCTAssertEqual(HotkeyManager.formatShortcut("ctrl+alt+a"), "⌃⌥A")
+
+        XCTAssertTrue(HotkeyManager.isValidShortcut("cmd+1"))
+        XCTAssertTrue(HotkeyManager.isValidShortcut("ctrl+shift+f3"))
+        XCTAssertFalse(HotkeyManager.isValidShortcut("cmd"))
+        XCTAssertFalse(HotkeyManager.isValidShortcut("1"))
+        XCTAssertFalse(HotkeyManager.isValidShortcut(""))
+    }
+
+    func testCaptureEnumsAndDisplayStrings() {
+        XCTAssertEqual(CaptureMode.fullScreen.rawValue, "full")
+        XCTAssertEqual(CaptureMode.custom.displayName, "Custom Region")
+        XCTAssertEqual(ImageFormat.webp.utType, "org.webmproject.webp")
+        XCTAssertEqual(OrganizeMode.byApp.displayName, "By App")
+        XCTAssertEqual(RetinaScale.twoX.displayName, "2x (144 DPI)")
+    }
+
+    func testWindowInfoDisplayTitle() {
+        let titled = WindowInfo(windowID: 1, ownerName: "Safari", windowName: "Docs", bounds: .zero, layer: 0, isOnScreen: true)
+        let untitled = WindowInfo(windowID: 2, ownerName: "Finder", windowName: "", bounds: .zero, layer: 0, isOnScreen: true)
+
+        XCTAssertEqual(titled.displayTitle, "Safari - Docs")
+        XCTAssertEqual(untitled.displayTitle, "Finder")
+    }
+
+    func testCaptureResultProperties() throws {
+        let result = CaptureResult(
+            image: try makeTestImage(width: 100, height: 50),
+            mode: .window,
+            captureRect: CGRect(x: 1, y: 2, width: 100, height: 50),
+            sourceApp: "Preview"
+        )
+
+        XCTAssertEqual(result.width, 100)
+        XCTAssertEqual(result.height, 50)
+        XCTAssertEqual(result.mode, .window)
+        XCTAssertEqual(result.sourceApp, "Preview")
+    }
+
+    func testCaptureErrorDescriptionsExist() {
+        XCTAssertTrue(CaptureError.capturePermissionDenied.errorDescription?.contains("permission") == true)
+        XCTAssertTrue(CaptureError.windowNotFound.errorDescription?.contains("window") == true)
+        XCTAssertNotNil(CaptureError.invalidRect.errorDescription)
+    }
+
+    func testCaptureEngineRejectsInvalidInputsBeforeSystemCapture() {
+        XCTAssertThrowsError(try CaptureEngine.shared.captureArea(.zero)) { error in
+            guard case CaptureError.invalidRect = error else {
+                XCTFail("Expected invalidRect, got \(error)")
+                return
+            }
+        }
+
+        XCTAssertThrowsError(try CaptureEngine.shared.captureScreen(index: -1)) { error in
+            guard case CaptureError.noScreensAvailable = error else {
+                XCTFail("Expected noScreensAvailable, got \(error)")
+                return
+            }
+        }
+
+        let invalidRegion = CustomRegion(name: "invalid", rect: .zero)
+        XCTAssertThrowsError(try CaptureEngine.shared.captureCustomRegion(invalidRegion)) { error in
+            guard case CaptureError.invalidRect = error else {
+                XCTFail("Expected invalidRect, got \(error)")
+                return
             }
         }
     }

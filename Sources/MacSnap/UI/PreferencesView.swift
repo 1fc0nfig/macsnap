@@ -611,6 +611,10 @@ struct PermissionsTab: View {
 
 /// About tab
 struct AboutTab: View {
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3.0"
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Spacer()
@@ -623,7 +627,7 @@ struct AboutTab: View {
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text("Version 1.0")
+            Text("Version \(appVersion)")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 

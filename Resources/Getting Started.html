@@ -15,12 +15,13 @@
             line-height: 1.6;
             color: #1d1d1f;
             background: linear-gradient(180deg, #f5f5f7 0%, #ffffff 100%);
-            padding: 40px 20px;
+            padding: 60px 40px;
             min-height: 100vh;
         }
         .container {
             max-width: 720px;
             margin: 0 auto;
+            padding: 0 20px;
         }
         header {
             text-align: center;
@@ -50,7 +51,7 @@
         .step {
             background: white;
             border-radius: 16px;
-            padding: 24px;
+            padding: 28px 32px;
             margin-bottom: 24px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
@@ -59,9 +60,21 @@
             align-items: center;
             margin-bottom: 16px;
         }
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-right: 14px;
+            flex-shrink: 0;
+        }
         .step-number {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             background: #007aff;
             color: white;
             border-radius: 50%;
@@ -69,7 +82,7 @@
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 14px;
             margin-right: 12px;
             flex-shrink: 0;
         }
@@ -80,6 +93,7 @@
         .step-content {
             color: #515154;
             font-size: 15px;
+            padding-left: 54px;
         }
         .step-content p {
             margin-bottom: 12px;
@@ -211,6 +225,7 @@
 
         <div class="step">
             <div class="step-header">
+                <div class="step-icon">📥</div>
                 <div class="step-number">1</div>
                 <div class="step-title">Install MacSnap</div>
             </div>
@@ -221,6 +236,7 @@
 
         <div class="step">
             <div class="step-header">
+                <div class="step-icon">🛡️</div>
                 <div class="step-number">2</div>
                 <div class="step-title">Bypass Gatekeeper Warning</div>
             </div>
@@ -253,6 +269,7 @@
 
         <div class="step">
             <div class="step-header">
+                <div class="step-icon">🎬</div>
                 <div class="step-number">3</div>
                 <div class="step-title">Grant Screen Recording Permission</div>
             </div>
@@ -275,6 +292,7 @@
 
         <div class="step">
             <div class="step-header">
+                <div class="step-icon">⌨️</div>
                 <div class="step-number">4</div>
                 <div class="step-title">Grant Accessibility Permission</div>
             </div>
@@ -296,6 +314,7 @@
 
         <div class="step">
             <div class="step-header">
+                <div class="step-icon"><img src="../Sources/MacSnap/Resources/AppIcon.png" width="20" height="20" alt="MacSnap"></div>
                 <div class="step-number">5</div>
                 <div class="step-title">Start Capturing!</div>
             </div>
@@ -319,6 +338,10 @@
                         <div class="hotkey-keys">⌘⇧4</div>
                         <div class="hotkey-desc">Custom Region</div>
                     </div>
+                </div>
+
+                <div class="info-box">
+                    <strong>Preview tip:</strong> After capture, drag the bottom-corner thumbnail into another app to drop the screenshot directly.
                 </div>
             </div>
         </div>
