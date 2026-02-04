@@ -7,7 +7,7 @@ cd "$ROOT_DIR"
 # Configuration
 APP_NAME="MacSnap"
 BUNDLE_ID="com.macsnap.app"
-VERSION="1.3.0"
+VERSION="1.3.1"
 BUILD_DIR=".build/release"
 APP_DIR="dist/${APP_NAME}.app"
 SIGN_IDENTITY="${MACSNAP_SIGN_IDENTITY:-${SIGN_IDENTITY:-}}"

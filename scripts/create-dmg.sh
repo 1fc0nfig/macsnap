@@ -2,7 +2,7 @@
 set -e
 
 APP_NAME="MacSnap"
-VERSION="${1:-1.3.0}"
+VERSION="${1:-1.3.1}"
 DMG_NAME="${APP_NAME}-${VERSION}"
 APP_DIR="dist/${APP_NAME}.app"
 DMG_FILE="dist/${DMG_NAME}.dmg"
