@@ -28,15 +28,12 @@
             margin-bottom: 48px;
         }
         .logo {
+            margin: 0 auto 16px;
+        }
+        .logo img {
             width: 80px;
             height: 80px;
-            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
             border-radius: 18px;
-            margin: 0 auto 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         h1 {
@@ -60,18 +57,6 @@
             align-items: center;
             margin-bottom: 16px;
         }
-        .step-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            margin-right: 14px;
-            flex-shrink: 0;
-        }
         .step-number {
             width: 28px;
             height: 28px;
@@ -93,7 +78,7 @@
         .step-content {
             color: #515154;
             font-size: 15px;
-            padding-left: 54px;
+            padding-left: 40px;
         }
         .step-content p {
             margin-bottom: 12px;
@@ -218,14 +203,13 @@
 <body>
     <div class="container">
         <header>
-            <div class="logo">📸</div>
+            <div class="logo"><img src="data:image/jpeg;base64,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" alt="MacSnap"></div>
             <h1>MacSnap</h1>
             <p class="subtitle">Getting Started Guide</p>
         </header>
 
         <div class="step">
             <div class="step-header">
-                <div class="step-icon">📥</div>
                 <div class="step-number">1</div>
                 <div class="step-title">Install MacSnap</div>
             </div>
@@ -236,7 +220,6 @@
 
         <div class="step">
             <div class="step-header">
-                <div class="step-icon">🛡️</div>
                 <div class="step-number">2</div>
                 <div class="step-title">Bypass Gatekeeper Warning</div>
             </div>
@@ -269,7 +252,6 @@
 
         <div class="step">
             <div class="step-header">
-                <div class="step-icon">🎬</div>
                 <div class="step-number">3</div>
                 <div class="step-title">Grant Screen Recording Permission</div>
             </div>
@@ -292,7 +274,6 @@
 
         <div class="step">
             <div class="step-header">
-                <div class="step-icon">⌨️</div>
                 <div class="step-number">4</div>
                 <div class="step-title">Grant Accessibility Permission</div>
             </div>
@@ -314,7 +295,6 @@
 
         <div class="step">
             <div class="step-header">
-                <div class="step-icon"><img src="../Sources/MacSnap/Resources/AppIcon.png" width="20" height="20" alt="MacSnap"></div>
                 <div class="step-number">5</div>
                 <div class="step-title">Start Capturing!</div>
             </div>
