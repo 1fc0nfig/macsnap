@@ -612,7 +612,7 @@ struct PermissionsTab: View {
 /// About tab
 struct AboutTab: View {
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3.0"
+        AppVersion.current
     }
 
     var body: some View {

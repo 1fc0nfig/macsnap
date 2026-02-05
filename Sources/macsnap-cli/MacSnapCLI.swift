@@ -7,7 +7,7 @@ struct MacSnapCLI: ParsableCommand {
     static var configuration = CommandConfiguration(
         commandName: "macsnap",
         abstract: "A lightweight screenshot tool for macOS",
-        version: "1.3.0",
+        version: AppVersion.current,
         subcommands: [
             CaptureCommand.self,
             ConfigCommand.self,

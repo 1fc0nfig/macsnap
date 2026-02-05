@@ -645,13 +645,24 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Preferences
 
+    public func openOutputFolder() {
+        let config = ConfigManager.shared.config
+        let path = config.output.expandedDirectory
+        let url = URL(fileURLWithPath: path)
+
+        // Create directory if needed
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+
+        NSWorkspace.shared.open(url)
+    }
+
     public func showPreferences() {
         if preferencesWindow == nil {
             let preferencesView = PreferencesView()
             let hostingView = NSHostingView(rootView: preferencesView)
             hostingView.frame = NSRect(x: 0, y: 0, width: 520, height: 540)
 
-            preferencesWindow = NSWindow(
+            preferencesWindow = PreferencesWindow(
                 contentRect: hostingView.frame,
                 styleMask: [.titled, .closable],
                 backing: .buffered,

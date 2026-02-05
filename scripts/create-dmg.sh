@@ -2,7 +2,7 @@
 set -e
 
 APP_NAME="MacSnap"
-VERSION="${1:-1.3.1}"
+VERSION="${1:-1.3.2}"
 DMG_NAME="${APP_NAME}-${VERSION}"
 APP_DIR="dist/${APP_NAME}.app"
 DMG_FILE="dist/${DMG_NAME}.dmg"
@@ -46,7 +46,7 @@ if command -v create-dmg &> /dev/null; then
     echo "Using create-dmg for professional DMG creation..."
 
     # Use create-dmg for professional look
-    create-dmg \
+    if create-dmg \
         --volname "${APP_NAME}" \
         --volicon "${VOLUME_ICON}" \
         --background "${BACKGROUND}" \
@@ -60,12 +60,20 @@ if command -v create-dmg &> /dev/null; then
         --no-internet-enable \
         "${DMG_FILE}" \
         "${DMG_STAGING}"
+    then
+        # Clean up staging
+        rm -rf "${DMG_STAGING}"
+    else
+        echo "create-dmg failed, falling back to basic hdiutil method..."
+        rm -f "${DMG_FILE}"
+    fi
+fi
 
-    # Clean up staging
-    rm -rf "${DMG_STAGING}"
-else
-    echo "create-dmg not found, using basic hdiutil method..."
-    echo "Install create-dmg for a professional DMG: brew install create-dmg"
+if [ ! -f "${DMG_FILE}" ]; then
+    if ! command -v create-dmg &> /dev/null; then
+        echo "create-dmg not found, using basic hdiutil method..."
+        echo "Install create-dmg for a professional DMG: brew install create-dmg"
+    fi
 
     # Add Applications symlink and Getting Started to staging
     ln -s /Applications "${DMG_STAGING}/Applications"

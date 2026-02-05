@@ -2,33 +2,33 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleExecutable</key>
-    <string>MacSnap</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.macsnap.app</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>MacSnap</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.3.0</string>
-    <key>CFBundleVersion</key>
-    <string>1.3.0</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright 2025. All rights reserved.</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSScreenCaptureUsageDescription</key>
-    <string>MacSnap needs screen recording permission to capture screenshots.</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>MacSnap needs accessibility permission for global hotkeys.</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>MacSnap</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.macsnap.app</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>MacSnap</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.3.2</string>
+	<key>CFBundleVersion</key>
+	<string>1.3.2</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>MacSnap needs accessibility permission for global hotkeys.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright 2025. All rights reserved.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>MacSnap needs screen recording permission to capture screenshots.</string>
 </dict>
 </plist>

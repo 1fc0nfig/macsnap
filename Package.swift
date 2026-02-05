@@ -21,7 +21,10 @@ let package = Package(
         .target(
             name: "MacSnapCore",
             dependencies: [],
-            path: "Sources/MacSnapCore"
+            path: "Sources/MacSnapCore",
+            resources: [
+                .process("Resources")
+            ]
         ),
 
         // Menu bar application

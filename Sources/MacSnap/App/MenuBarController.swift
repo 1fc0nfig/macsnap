@@ -252,14 +252,7 @@ public class MenuBarController: NSObject {
     }
 
     @objc private func openOutputFolder() {
-        let config = ConfigManager.shared.config
-        let path = config.output.expandedDirectory
-        let url = URL(fileURLWithPath: path)
-
-        // Create directory if needed
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-
-        NSWorkspace.shared.open(url)
+        appDelegate?.openOutputFolder()
     }
 
     @objc private func showPreferences() {

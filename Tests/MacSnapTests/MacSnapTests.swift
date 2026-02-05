@@ -6,9 +6,11 @@ import CoreGraphics
 private enum TestEnvironment {
     static let configDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
         .appendingPathComponent("macsnap-tests-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true)
+    static let appVersion = "test-version"
 
     static func bootstrap() {
         setenv("MACSNAP_CONFIG_DIR", configDirectory.path, 1)
+        setenv("MACSNAP_VERSION", appVersion, 1)
         try? resetConfigDirectory()
     }
 
@@ -58,7 +60,7 @@ final class ConfigModelTests: XCTestCase {
     func testAppConfigDefaultsMatchCurrentVersion() {
         let config = AppConfig()
 
-        XCTAssertEqual(config.version, "1.3.0")
+        XCTAssertEqual(config.version, TestEnvironment.appVersion)
         XCTAssertEqual(config.output.directory, "~/Pictures/macsnap")
         XCTAssertEqual(config.output.format, .png)
         XCTAssertEqual(config.output.organize, .byDate)
@@ -145,7 +147,7 @@ final class ConfigManagerTests: XCTestCase {
 
         let loaded = manager.loadConfig()
 
-        XCTAssertEqual(loaded.version, "1.3.0")
+        XCTAssertEqual(loaded.version, TestEnvironment.appVersion)
         XCTAssertTrue(FileManager.default.fileExists(atPath: configPath.path))
     }
 
