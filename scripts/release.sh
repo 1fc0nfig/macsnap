@@ -117,14 +117,16 @@ if [ -d "$HOMEBREW_TAP" ]; then
     sed -i '' "s/sha256 \".*\"/sha256 \"${CLI_SHA}\"/" Formula/macsnap-cli.rb
     sed -i '' "s/version \".*\"/version \"${VERSION}\"/" Formula/macsnap-cli.rb
 
-    git add .
-    git commit -m "Update to v${VERSION}
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-    git push origin main
+    if ! git diff --quiet; then
+        git add .
+        git commit -m "Update to v${VERSION}" || echo "   No changes to commit"
+        git push origin main
+        echo "   Homebrew tap updated"
+    else
+        echo "   Homebrew tap already up to date"
+    fi
 
     cd "$ROOT_DIR"
-    echo "   Homebrew tap updated"
 else
     echo "   Warning: Homebrew tap not found at $HOMEBREW_TAP"
     echo "   Run: brew tap 1fc0nfig/macsnap"
