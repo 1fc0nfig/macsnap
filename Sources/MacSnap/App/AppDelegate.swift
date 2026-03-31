@@ -172,10 +172,9 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Capture Actions
 
     public func performCapture(mode: CaptureMode) {
-        // Prevent multiple simultaneous captures
-        guard !isCaptureInProgress else {
-            Logger.debug("Capture already in progress, ignoring")
-            return
+        // If a capture is already in progress, cancel it first so the user can switch modes
+        if isCaptureInProgress {
+            cancelActiveCapture()
         }
 
         isCaptureInProgress = true
@@ -195,6 +194,30 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func captureCompleted() {
+        isCaptureInProgress = false
+    }
+
+    private func cancelActiveCapture() {
+        // Nil out callbacks before cancelling to prevent async callbacks
+        // from resetting isCaptureInProgress for the new capture
+        if let picker = windowPicker {
+            picker.onCancel = nil
+            picker.onWindowSelected = nil
+            picker.cancel()
+            windowPicker = nil
+        }
+        if let selector = areaSelectorWindow {
+            selector.onCancel = nil
+            selector.onSelection = nil
+            selector.cancelSelection()
+            areaSelectorWindow = nil
+        }
+        if let overlay = timedCaptureOverlay {
+            overlay.onCancel = nil
+            overlay.onComplete = nil
+            overlay.cancel()
+            timedCaptureOverlay = nil
+        }
         isCaptureInProgress = false
     }
 

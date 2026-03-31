@@ -148,7 +148,7 @@ public class TimedCaptureOverlay: NSWindow {
         }
     }
 
-    private func cancel() {
+    public func cancel() {
         timer?.invalidate()
         timer = nil
         orderOut(nil)

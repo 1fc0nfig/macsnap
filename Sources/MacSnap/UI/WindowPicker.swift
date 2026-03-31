@@ -99,7 +99,7 @@ public class WindowPickerController {
         }
     }
 
-    private func cancel() {
+    public func cancel() {
         Logger.debug("Window picker cancelled")
         let callback = onCancel
         cleanup()

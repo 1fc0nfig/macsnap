@@ -32,7 +32,7 @@ public class AreaSelectorWindow: NSObject {
                 self?.captureCurrentSelection()
             }
             controlPanelWindow?.onCancel = { [weak self] in
-                self?.handleCancel()
+                self?.cancelSelection()
             }
             controlPanelWindow?.onDimensionChange = { [weak self] width, height in
                 self?.updateSelectionSize(width: width, height: height)
@@ -173,7 +173,7 @@ public class AreaSelectorWindow: NSObject {
                 self?.handleSelection(rect)
             }
             overlay.onCancel = { [weak self] in
-                self?.handleCancel()
+                self?.cancelSelection()
             }
             overlayWindows.append(overlay)
         }
@@ -202,7 +202,7 @@ public class AreaSelectorWindow: NSObject {
         onSelection?(rect)
     }
 
-    private func handleCancel() {
+    public func cancelSelection() {
         cleanup()
         onCancel?()
     }
