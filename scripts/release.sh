@@ -78,8 +78,9 @@ cat > "${NOTES_FILE}" << EOF
 ## MacSnap v${VERSION}
 
 ### Fixes
-- Preferences now honor Cmd+Q to quit and Cmd+O to open the output folder.
-- Versioning is unified across app, CLI, and core.
+- Fix launch-at-login toggle not working (#2) — resolved recursive onChange loop and strict status check that caused the login item to silently unregister itself
+- Sync login item state with macOS on startup to correct stale config
+- Fix event monitor leaks in area selector and timed capture overlay
 
 ### Install
 \`\`\`bash
