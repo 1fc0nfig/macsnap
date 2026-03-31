@@ -7,6 +7,7 @@ public class TimedCaptureOverlay: NSWindow {
     private var remainingSeconds: Int
     private var timer: Timer?
     private var captureMode: CaptureMode
+    private var escapeMonitor: Any?
 
     public var onComplete: ((CaptureMode) -> Void)?
     public var onCancel: (() -> Void)?
@@ -87,7 +88,7 @@ public class TimedCaptureOverlay: NSWindow {
         NSApp.activate(ignoringOtherApps: true)
 
         // Monitor for ESC
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // ESC
                 self?.cancel()
                 return nil
@@ -136,6 +137,10 @@ public class TimedCaptureOverlay: NSWindow {
     private func complete() {
         timer?.invalidate()
         timer = nil
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
+        }
 
         // Brief flash before capture
         NSAnimationContext.runAnimationGroup { context in
@@ -151,6 +156,10 @@ public class TimedCaptureOverlay: NSWindow {
     public func cancel() {
         timer?.invalidate()
         timer = nil
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
+        }
         orderOut(nil)
         onCancel?()
     }

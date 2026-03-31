@@ -213,6 +213,7 @@ public class AreaSelectorWindow: NSObject {
         HotkeyManager.shared.areaSelectionCaptureHandler = nil
 
         NSCursor.pop()
+        controlPanelWindow?.removeEscapeMonitor()
         controlPanelWindow?.orderOut(nil)
         controlPanelWindow = nil
         for window in overlayWindows {
@@ -227,6 +228,7 @@ class ControlPanelWindow: NSPanel {
     private let selectionState: SelectionState
     private var widthField: NSTextField!
     private var heightField: NSTextField!
+    private var escapeMonitor: Any?
 
     var onCapture: (() -> Void)?
     var onCancel: (() -> Void)?
@@ -249,6 +251,26 @@ class ControlPanelWindow: NSPanel {
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         setupContent()
+
+        // Monitor ESC at the event level so it works even when a text field has focus
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // ESC
+                self?.onCancel?()
+                return nil
+            }
+            return event
+        }
+    }
+
+    func removeEscapeMonitor() {
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
+        }
+    }
+
+    deinit {
+        removeEscapeMonitor()
     }
 
     private func setupContent() {
