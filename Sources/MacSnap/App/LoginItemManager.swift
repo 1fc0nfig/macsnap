@@ -3,14 +3,14 @@ import ServiceManagement
 import MacSnapCore
 
 /// Manages the app's login item registration using SMAppService (macOS 13+)
-final class LoginItemManager {
+final class LoginItemManager: ObservableObject {
     static let shared = LoginItemManager()
 
-    private init() {}
+    @Published var isEnabled: Bool
 
-    /// Whether the app is currently registered as a login item
-    var isEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+    private init() {
+        let status = SMAppService.mainApp.status
+        isEnabled = status == .enabled || status == .requiresApproval
     }
 
     /// Register or unregister the app as a login item
@@ -21,12 +21,17 @@ final class LoginItemManager {
             } else {
                 try SMAppService.mainApp.unregister()
             }
-            // Sync config with actual state
-            ConfigManager.shared.update(\.advanced.launchAtLogin, to: isEnabled)
         } catch {
             Logger.error("Failed to \(enabled ? "enable" : "disable") login item: \(error.localizedDescription)")
-            // Sync config with actual state (may differ from what was requested)
-            ConfigManager.shared.update(\.advanced.launchAtLogin, to: isEnabled)
         }
+        refreshState()
+    }
+
+    /// Sync published state and config with the actual system state
+    func refreshState() {
+        let status = SMAppService.mainApp.status
+        let systemState = status == .enabled || status == .requiresApproval
+        isEnabled = systemState
+        ConfigManager.shared.update(\.advanced.launchAtLogin, to: systemState)
     }
 }

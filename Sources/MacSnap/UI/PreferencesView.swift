@@ -64,7 +64,7 @@ public struct PreferencesView: View {
 /// General settings tab
 struct GeneralTab: View {
     @State private var config = ConfigManager.shared.config
-    @State private var launchAtLogin = LoginItemManager.shared.isEnabled
+    @ObservedObject private var loginItemManager = LoginItemManager.shared
 
     var body: some View {
         ScrollView {
@@ -159,12 +159,10 @@ struct GeneralTab: View {
                 // Startup Section
                 GroupBox {
                     VStack(alignment: .leading, spacing: 12) {
-                        Toggle("Launch at login", isOn: $launchAtLogin)
-                            .onChange(of: launchAtLogin) { newValue in
-                                LoginItemManager.shared.setEnabled(newValue)
-                                // Re-read actual state in case registration failed
-                                launchAtLogin = LoginItemManager.shared.isEnabled
-                            }
+                        Toggle("Launch at login", isOn: Binding(
+                            get: { loginItemManager.isEnabled },
+                            set: { loginItemManager.setEnabled($0) }
+                        ))
 
                         Toggle("Show in Dock", isOn: $config.advanced.showInDock)
                             .onChange(of: config.advanced.showInDock) { newValue in

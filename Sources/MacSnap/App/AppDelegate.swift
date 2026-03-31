@@ -62,6 +62,9 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Sync login item state with system (handles manual changes in System Settings)
+        LoginItemManager.shared.refreshState()
+
         Logger.info("Application ready")
     }
 
